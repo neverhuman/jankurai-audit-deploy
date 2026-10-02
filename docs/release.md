@@ -66,9 +66,9 @@ rollback for the release surface:
   (dependency scanning); the security CI job emits
   `target/jankurai/security/evidence.json` and the SBOM before the audit gate.
 - **Backups**: release artifacts and their signed `sha256` sidecars are durable,
-  immutable, and re-fetchable from each tag; the local Jeryu remote
-  (`ssh://git@127.0.0.1:2224/root/*`) keeps an authoritative backup of every
-  mirrored commit and tag, so a lost GitHub mirror is restored from Jeryu.
+  immutable, and re-fetchable from each tag; the Jeryu forge keeps
+  an authoritative copy of every mirrored commit and tag, so a lost GitHub
+  mirror is restored from the forge.
 - **Monitoring**: the `repo-score` artifacts, the `summary.md` step summary, and
   the publish receipts written under `target/jankurai/` give a post-release
   monitoring trail; a regression shows up as a score drop on the next audit.

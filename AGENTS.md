@@ -3,8 +3,8 @@
 Read [`SPLIT.md`](SPLIT.md) first. This repository is one member of the Jankurai
 split family: the release, signing, mirroring, and split-generator member.
 
-- Historical Jeryu repo: `root/jankurai-deploy` on the Jeryu remote
-  `ssh://git@127.0.0.1:2224/root/*`. Primary GitHub repository: `neverhuman/jankurai-deploy`.
+- Forge repo: `root/jankurai-deploy` (see the hub's `docs/forge-authority.md`).
+  GitHub repository: `neverhuman/jankurai-deploy`.
 - One-command setup and validation: `just setup`, `just fast`, `just check`
   (root [`Justfile`](Justfile)).
 - Route changes through [`agent/owner-map.json`](agent/owner-map.json) and

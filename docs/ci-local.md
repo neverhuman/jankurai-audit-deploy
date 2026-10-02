@@ -111,7 +111,7 @@ formula metadata before publishing the immutable tag.
 
 ### `just ci-shadow`
 The Jeryu main-branch shadow deploy. It expects the local checkout to point at
-the Jeryu remote origin (`ssh://git@127.0.0.1:2224/root/*`) and uses the local
+the Jeryu forge remote as `origin` and uses the local
 `.jeryu/local/repos/jankurai.toml` sidecar to mirror `main` to GitHub after the
 Jeryu pipeline has passed.
 

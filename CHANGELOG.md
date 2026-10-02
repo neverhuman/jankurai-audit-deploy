@@ -30,8 +30,7 @@ The authoritative version string lives in [`VERSION`](VERSION).
   and a proof route to every top-level path that exists in this repo.
 - Rewrote the legacy "internal GitLab" remote/origin/MR references in
   `ops/ci/node-tools.sh`, `ops/ci/post-main-shadow.sh`, `ops/AGENTS.md`,
-  `docs/ci-local.md`, and the audit-masking issue template to the Jeryu remote
-  `ssh://git@127.0.0.1:2224/root/*`.
+  `docs/ci-local.md`, and the audit-masking issue template to the Jeryu remote.
 
 ## [1.6.10] - 2026-06-12
 
