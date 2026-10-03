@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run an ops/ci/*.sh lane inside the pinned local-CI container so the
-# OS, toolchain, and tool versions match GitHub Actions exactly.
+# OS, toolchain, and tool versions are pinned and reproducible.
 #
 # Usage:
 #   ops/ci/run-in-container.sh ops/ci/quality-gates.sh

@@ -7,9 +7,6 @@ mkdir -p target
 echo "[security] secret scan: gitleaks detect"
 gitleaks detect --source . --no-banner --redact
 
-echo "[security] workflow lint: actionlint"
-actionlint
-
 if [ -f Cargo.toml ]; then
   echo "[security] cargo audit"
   cargo audit

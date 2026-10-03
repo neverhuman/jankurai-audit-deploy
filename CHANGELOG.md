@@ -7,6 +7,13 @@ The authoritative version string lives in [`VERSION`](VERSION).
 
 ## [Unreleased]
 
+### Removed
+
+- GitHub Actions workflows (`.github/workflows/`) and the workflow-only
+  `ops/ci/aggregate.sh`, plus the actionlint/zizmor workflow-lint steps. GitHub
+  is a publishing mirror only; CI, scoring, and release builds run on our own
+  servers.
+
 ## [1.7.5] - 2026-10-14
 
 `VERSION` is `1.7.5-split.0`, the member version shipped in the 1.7.5 family

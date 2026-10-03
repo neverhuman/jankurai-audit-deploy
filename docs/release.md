@@ -26,14 +26,12 @@ Releases are cut by CI, not by hand:
    [`CHANGELOG.md`](../CHANGELOG.md).
 2. Run the full local gate: `just check` (fast lane, security scanning, the
    release audit gate, and the jankurai self-audit).
-3. Push the version commit. The workflows under
-   [`.github/workflows/`](../.github/workflows) run the build, security, and
-   jankurai audit jobs and upload the `repo-score` artifacts.
-4. Tag the release commit with `jankurai-deploy-v<version>-split.<N>`. The build
-   job in [`release.yml`](../.github/workflows/release.yml) produces signed
-   artifacts via `ops/ci/release-build.sh`, `ops/ci/release-macos-sign.sh`, and
-   `ops/ci/release-sign-blob.sh`; the publish job
-   (`ops/ci/release-publish.sh`) attaches them to the immutable tag.
+3. Push the version commit. Forge CI on our own hosts runs the build,
+   security, and jankurai audit lanes and keeps the `repo-score` artifacts.
+4. Tag the release commit with `jankurai-deploy-v<version>-split.<N>`. Releases
+   are built and signed on our own servers. A separate change introduces
+   key-based release signing; the existing `ops/ci/release-*.sh` scripts are not
+   invoked by any workflow in the meantime.
 5. The tag mirror in [`.jeryu/repo.toml`](../.jeryu/repo.toml) publishes the
    immutable tag to the public GitHub mirror.
 
@@ -45,7 +43,8 @@ Release builds depend on immutable tags, never branches.
   audit (`just release`) before any tag is cut, so a release cannot ship below
   the score floor.
 - **Signing**: release artifacts are signed by `ops/ci/release-sign-blob.sh`
-  (Sigstore blob signing) and, on macOS, notarized by
+  (Sigstore blob signing, which relied on GitHub Actions OIDC and is replaced by
+  key-based signing in a separate change) and, on macOS, notarized by
   `ops/ci/release-macos-sign.sh`. Each artifact ships with a `sha256` sidecar.
 - **SBOM**: a CycloneDX/SPDX software bill of materials is generated from the
   locked dependency graph during the security job and attached to the release as
@@ -53,8 +52,8 @@ Release builds depend on immutable tags, never branches.
 - **Provenance**: the security job runs `gitleaks` for secret scanning and
   `cargo audit` for advisory checks; the audit job publishes the `repo-score`
   artifacts that prove the release passed the jankurai gate.
-- **Action pinning**: every third-party GitHub Action is pinned to a 40-character
-  commit SHA so the supply chain of the release pipeline itself is fixed.
+- **GitHub**: GitHub is a publishing mirror only. It runs no workflows; builds,
+  CI, scoring, and release signing happen on our own servers.
 
 ## Launch gates
 

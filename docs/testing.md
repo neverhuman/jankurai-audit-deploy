@@ -12,7 +12,7 @@ the smallest lane that proves the change.
 | `audit` | jankurai repo score and hard-rule findings |
 | `full` | the full release/merge gate |
 
-The local runner `scripts/ci-local.sh` and the CI workflows under `.github/`
+The local runner `scripts/ci-local.sh` and forge CI on our own hosts
 call the exact same `ops/ci/*.sh` entrypoints, so a green local run predicts a
 green CI run. See [`docs/ci-local.md`](ci-local.md) for the per-lane contract.
 

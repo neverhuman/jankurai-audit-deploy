@@ -32,15 +32,15 @@ just check
 ```
 
 The full command surface lives in the root [`Justfile`](Justfile). Continuous
-integration runs the same lanes under
-[`.github/workflows/`](.github/workflows); the local-CI contract is documented in
+integration runs the same lanes on the forge and our own hosts; GitHub is a
+publishing mirror only. The local-CI contract is documented in
 [`docs/ci-local.md`](docs/ci-local.md).
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
-| `.github/` | thin GitHub Actions workflows delegating to `ops/ci/*.sh` |
+| `.github/` | issue/PR templates, CODEOWNERS, and agent instructions (no workflows) |
 | `.jeryu/` | local Jeryu repo and public-mirror metadata |
 | `ops/` | CI, release, signing, deploy, and security entrypoints |
 | `scripts/` | local CI runner, doctor, and split-metadata helpers |

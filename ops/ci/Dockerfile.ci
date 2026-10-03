@@ -1,6 +1,5 @@
-# Local-CI runner image. Matches the ubuntu-latest GitHub runner shape
-# closely enough that `just ci-container` reproduces failures from
-# .github/workflows/jankurai.yml#audit deterministically.
+# Local-CI runner image: a pinned Ubuntu toolchain so `just ci-container`
+# reproduces the audit lane deterministically.
 #
 # Build: docker build -f ops/ci/Dockerfile.ci -t jankurai-ci .
 # Run:   docker run --rm -v "$PWD":/work -w /work jankurai-ci bash ops/ci/audit.sh

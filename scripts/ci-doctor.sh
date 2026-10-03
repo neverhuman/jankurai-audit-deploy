@@ -67,7 +67,6 @@ check_cargo_subcommand mutants "cargo install cargo-mutants --locked"
 # Security lane
 check_cmd gitleaks "brew install gitleaks"
 check_cargo_subcommand audit "cargo install cargo-audit --locked"
-check_cmd zizmor "cargo install zizmor --locked"
 check_cmd syft "brew install syft"
 
 # Paper lane

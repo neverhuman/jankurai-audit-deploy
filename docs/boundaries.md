@@ -8,7 +8,7 @@ companion.
 ## Owned surface
 
 `jankurai-deploy` owns CI, release, signing, deploy, observability, and security
-routing under `ops/`, the local-CI helpers under `scripts/`, the thin workflows
+routing under `ops/`, the local-CI helpers under `scripts/`, the GitHub templates
 under `.github/`, and the public-mirror metadata under `.jeryu/`. There is no web
 surface, no PostgreSQL database, and no Python AI/data service committed in this
 repo, so those stack arms of the family standard are not applicable here.

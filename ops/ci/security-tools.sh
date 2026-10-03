@@ -25,11 +25,6 @@ if ! want_version "cargo-audit" "$CARGO_AUDIT_VERSION"; then
   cargo install cargo-audit --version "$CARGO_AUDIT_VERSION" --locked
 fi
 
-step "zizmor ${ZIZMOR_VERSION}"
-if ! want_version "zizmor" "$ZIZMOR_VERSION"; then
-  cargo install zizmor --version "$ZIZMOR_VERSION" --locked
-fi
-
 step "gitleaks ${GITLEAKS_VERSION}"
 if ! want_version "gitleaks" "$GITLEAKS_VERSION"; then
   uname_s="$(uname -s | tr '[:upper:]' '[:lower:]')"

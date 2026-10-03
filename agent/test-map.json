@@ -47,7 +47,7 @@
     },
     ".github/": {
       "command": "bash scripts/ci-local.sh required",
-      "purpose": "verify CI workflow entrypoints stay pinned and thin"
+      "purpose": "verify GitHub templates and CODEOWNERS stay coherent"
     },
     "agent/": {
       "command": "bash scripts/ci-local.sh required",

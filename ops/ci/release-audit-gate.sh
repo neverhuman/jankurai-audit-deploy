@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Release audit gate: tag-vs-VERSION check, coverage/mutation evidence,
 # quality gates, strict security lane, ratchet audit, and SARIF artifact.
-# Mirrors release.yml#audit-gate.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 ensure_dir "${ARTIFACT_ROOT}"

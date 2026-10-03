@@ -22,7 +22,7 @@ production database writes.
 
 | Path | Role |
 | --- | --- |
-| `.github/` | thin GitHub Actions workflows; every job delegates to `ops/ci/*.sh` |
+| `.github/` | issue/PR templates, CODEOWNERS, and agent instructions; no workflows (GitHub is publish-only) |
 | `.jeryu/` | local Jeryu repo + shadow/tag-mirror config for the public GitHub mirror |
 | `ops/` | CI, release, signing, deploy, and security shell entrypoints |
 | `scripts/` | local CI runner, doctor, split-metadata, and render helpers |

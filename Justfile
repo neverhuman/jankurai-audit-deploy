@@ -1,9 +1,9 @@
 # jankurai-deploy root command surface.
 # One-command setup and validation lanes for agents and CI.
 # Every lane below is deterministic and runnable from the repo root, and each
-# one delegates to the same ops/ci/*.sh and scripts/*.sh entrypoints that the
-# GitHub Actions workflows call, so local runs and CI execute identical
-# commands (see docs/ci-local.md).
+# one delegates to the same ops/ci/*.sh and scripts/*.sh entrypoints that
+# forge CI calls, so local runs and CI execute identical commands (see
+# docs/ci-local.md).
 
 # Default: list available lanes.
 default:
@@ -41,7 +41,7 @@ check:
 # Verify is an alias of check for agents that look for a `verify` lane.
 verify: check
 
-# Lint the shell and workflow surface (zizmor + bash -n via the required lane).
+# Lint the shell surface (bash -n via the required lane).
 lint:
     bash ops/ci/quality-gates.sh
 
