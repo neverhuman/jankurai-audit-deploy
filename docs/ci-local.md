@@ -110,10 +110,11 @@ The release.yml publish job. It expects `LOCAL_RELEASE_TAG=vX.Y.Z` and
 formula metadata before publishing the immutable tag.
 
 ### `just ci-shadow`
-The Jeryu main-branch shadow deploy. It expects the local checkout to point at
-the Jeryu forge remote as `origin` and uses the local
+The Jeryu main-branch shadow deploy. It expects `JERYU_FORGE_ORIGIN` to name the
+forge origin URL this checkout must already use for `origin`, and uses the local
 `.jeryu/local/repos/jankurai.toml` sidecar to mirror `main` to GitHub after the
-Jeryu pipeline has passed.
+Jeryu pipeline has passed. The lane refuses to run, with a receipt, when
+`JERYU_FORGE_ORIGIN` is unset or `origin` points somewhere else.
 
 ### `just zizmor`
 Static analysis of GitHub workflows. Run before pushing any `.github/workflows/`

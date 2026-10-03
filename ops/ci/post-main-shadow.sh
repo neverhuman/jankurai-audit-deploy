@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Post-main GitHub shadow: after the merge into the local Jeryu remote
-# (ssh://git@127.0.0.1:2224/root/*) succeeds, mirror the accepted main commit
-# through Jeryu's local shadow config and write a receipt.
+# Post-main GitHub shadow: after the merge into the Jeryu forge remote succeeds,
+# mirror the accepted main commit through Jeryu's local shadow config and write
+# a receipt. The forge origin this lane requires is site configuration: set
+# JERYU_FORGE_ORIGIN to the origin URL the checkout must already point at.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 ensure_dir "${ARTIFACT_ROOT}"
 
 shadow_json="${ARTIFACT_ROOT}/jeryu-shadow.json"
 shadow_md="${ARTIFACT_ROOT}/jeryu-shadow.md"
-expected_origin="ssh://git@127.0.0.1:2224/root/jankurai.git"
+expected_origin="${JERYU_FORGE_ORIGIN:-}"
 repo_root="${CI_ROOT}"
 branch="${CI_COMMIT_BRANCH:-$(git -C "${repo_root}" branch --show-current 2>/dev/null || true)}"
 commit="${CI_COMMIT_SHA:-$(git -C "${repo_root}" rev-parse HEAD 2>/dev/null || echo unknown)}"
@@ -61,8 +62,13 @@ if [[ -z "${branch}" || "${branch}" != "main" ]]; then
   exit 0
 fi
 
+if [[ -z "${expected_origin}" ]]; then
+  write_receipt "failed" "JERYU_FORGE_ORIGIN is not set"
+  fail "JERYU_FORGE_ORIGIN must name the Jeryu forge origin for this repo"
+fi
+
 if [[ "${origin_url}" != "${expected_origin}" ]]; then
-  write_receipt "failed" "origin must point at the local Jeryu remote"
+  write_receipt "failed" "origin must point at the Jeryu forge remote"
   fail "expected origin ${expected_origin}, got ${origin_url}"
 fi
 

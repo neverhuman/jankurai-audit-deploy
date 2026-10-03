@@ -74,8 +74,8 @@ visibility.
 - Existing non-Rust fixture exclusions continue to work when they cannot match
   tracked Rust/core files.
 - Post-audit filtering of caps/findings/issues is detected as a hard failure.
-- GitHub, the local Jeryu remote (`ssh://git@127.0.0.1:2224/root/*`), and local
-  agent workflows all receive the same blocking signal.
+- GitHub, the Jeryu forge remote, and local agent workflows all receive the same
+  blocking signal.
 
 ## Context
 

@@ -6,7 +6,7 @@
 - Never switch to sibling clones, archives, backups, resolved symlink targets, `/tmp` worktrees, or duplicate roots.
 - Never create repo copies or side folders outside the active repo; preserve work with git branches.
 - Before edits, report `pwd`, `git rev-parse --show-toplevel`, and `git status --short --branch`.
-- Use Jeryu APIs/CLI for local Jeryu remote (`ssh://git@127.0.0.1:2224/root/*`) and merge-request work; no credential scraping or raw local API calls.
+- Use Jeryu APIs/CLI for forge remote and merge-request work; no credential scraping or raw local API calls.
 
 Read `agent/JANKURAI_STANDARD.md` first.
 

@@ -23,6 +23,12 @@ The authoritative version string lives in [`VERSION`](VERSION).
 
 ### Changed
 
+- Moved the remaining site specifics out of ops: the shadow lane reads the forge
+  origin it requires from `JERYU_FORGE_ORIGIN` instead of a hardcoded retired
+  remote, `ops/ci/artifact_support.sh` finds a local Jeryu checkout through
+  `JERYU_SOURCE_DIR` instead of a fixed home path, and `ops/ci/node-tools.sh`,
+  `ops/AGENTS.md` and the audit-masking issue template no longer name the
+  retired remote URL.
 - Re-scoped `agent/generated-zones.toml` to the only generated tree that exists
   here (`target/`), and removed the dangling `dist/`, `.fusion/`, and
   `package-lock.json` zone entries.
