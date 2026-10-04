@@ -1,0 +1,17 @@
+# Vendored copy of the hub installer.
+# jankurai-installer.sh in this repo is a byte-identical copy of
+# jankurai-installer.sh in the hub repository, so the installer this repo
+# publishes with a release is the same verified installer the hub ships.
+# It is never hand-edited: re-copy it from the hub and update sha256 and
+# source_commit here (`bash scripts/sync-hub-installer.sh <hub checkout>`).
+
+schema_version = "1.0.0"
+path = "jankurai-installer.sh"
+source_repo = "root/jankurai"
+source_path = "jankurai-installer.sh"
+# Hub commit that last changed the installer.
+source_commit = "9a101cda4bc32059a2c2f20a92e6d4948256507f"
+sha256 = "9a55b1e93947d0a3a009df2080694a5cc67318666fc25cb0673b189fe10b2c4e"
+# Release from the hub family.lock. The action.yml release-tag default and the
+# installer's own default tag both track this.
+family_release = "1.7.2"

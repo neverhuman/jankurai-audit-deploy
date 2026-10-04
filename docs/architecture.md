@@ -29,7 +29,7 @@ production database writes.
 | `agent/` | machine-readable owner, test, boundary, generated-zone, and standard maps |
 | `docs/` | architecture, boundaries, testing, release, exception, and CI-local doctrine |
 | `action.yml` | the composite GitHub Action that installs the auditor |
-| `jankurai-installer.sh` | the standalone installer published with each release |
+| `jankurai-installer.sh` | the standalone installer published with each release, a byte-identical copy of the hub's |
 | `VERSION` | the single source of truth for the deploy member version |
 
 ## Mirroring model

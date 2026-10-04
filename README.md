@@ -47,7 +47,7 @@ integration runs the same lanes under
 | `agent/` | machine-readable owner, test, boundary, and generated-zone maps |
 | `docs/` | architecture, testing, boundaries, release, and exception docs |
 | `action.yml` | composite GitHub Action that installs the auditor |
-| `jankurai-installer.sh` | standalone installer published with each release |
+| `jankurai-installer.sh` | standalone installer published with each release, vendored byte-for-byte from the hub |
 
 ## Documentation
 

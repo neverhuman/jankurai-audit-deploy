@@ -6,9 +6,9 @@ branding:
 
 inputs:
   release-tag:
-    description: "Jankurai release tag to install from neverhuman/jankurai releases"
+    description: "Jankurai release tag to install from neverhuman/jankurai-audit releases"
     required: false
-    default: "v1.7.0-split.0"
+    default: "v1.7.2"
   mode:
     description: "Audit mode: advisory, ratchet, or release"
     required: false

@@ -11,3 +11,10 @@ source = "Rust and CI build commands (ops/ci/*.sh)"
 command = "bash scripts/ci-local.sh required"
 read_only = true
 write_policy = "generated_output"
+
+[[zone]]
+path = "jankurai-installer.sh"
+source = "byte-identical copy of jankurai-installer.sh in the hub (root/jankurai); see agent/vendor/hub-installer.lock"
+command = "bash scripts/sync-hub-installer.sh <hub checkout>"
+read_only = true
+write_policy = "generator_only"
