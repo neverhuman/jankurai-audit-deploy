@@ -5,6 +5,9 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
+echo "[ci] required lane: ci-local lane contract"
+bash scripts/ci-local-lanes-test.sh
+
 shell_files=(scripts/*.sh ops/ci/*.sh jankurai-installer.sh)
 
 for script in "${shell_files[@]}"; do bash -n "$script"; done
