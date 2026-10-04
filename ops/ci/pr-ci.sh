@@ -7,7 +7,7 @@
 # repo-score artifacts are produced on every PR.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-cd "${CI_ROOT}"
+cd "${CI_ROOT}" || exit 1
 
 ensure_dir "${ARTIFACT_ROOT}"
 

@@ -16,6 +16,39 @@ The local runner `scripts/ci-local.sh` and the CI workflows under `.github/`
 call the exact same `ops/ci/*.sh` entrypoints, so a green local run predicts a
 green CI run. See [`docs/ci-local.md`](ci-local.md) for the per-lane contract.
 
+## The required lane
+
+`ops/ci/required.sh` is the one lane every change must pass. It is offline and
+deterministic, and it covers the shell surface this repo releases from:
+
+1. `bash -n` over `scripts/*.sh`, `ops/ci/*.sh`, and `jankurai-installer.sh`.
+2. `shellcheck -S warning` over the same file set. The linter is a hard
+   requirement: the lane fails when shellcheck is missing rather than skipping
+   it, because a gate that silently drops its linter is not a gate. Install it
+   with `brew install shellcheck` or the distribution package
+   (`scripts/ci-doctor.sh` reports it missing); suppress a deliberate finding
+   with a `# shellcheck disable=SCxxxx` comment that says why.
+3. `scripts/check-vendored-installer.sh` — the installer is still the byte-exact
+   hub copy and targets the family release in the vendor lock.
+4. `scripts/installer-selftest.sh` — the offline installer self-test.
+
+`jankurai-installer.sh` is byte-locked to the hub copy, so the self-test proves
+its behaviour without editing it. It copies the installer, repoints the pinned
+verifier hashes at local stub binaries and the unprovisioned release-key pin at
+a fixture key (exactly as the hub's `scripts/installer.test.mjs` does), then
+drives the copy with `--assets-dir` so no release URL is ever fetched. `curl`
+and `uname` are stubbed, so the Linux x86-64 path runs on any host with no
+network. The cases cover invalid repository and tag rejection,
+`--print-asset-name`, and signing-path and certificate-identity selection: the
+pre-rename keyless identity for v1.7.1 and earlier under either hub name, a fork
+verifying as itself, the pinned-key path for v1.7.2 and later with no GitHub CLI
+or attestation fetch, a key that does not match its pin, and the committed
+all-zero key pin refusing every key-signed tag.
+
+The hub keeps the exhaustive installer harness (`scripts/installer.test.mjs`,
+which also covers macOS, archive-inventory and atomic-install behaviour); this
+repo's copy is the subset that holds the vendored installer honest without Node.
+
 ## Typed exception and error surface
 
 Release and mirror automation in this repo fails loudly with a typed, agent
@@ -66,9 +99,10 @@ mirroring) needs an explicit ceiling before it starts.
 
 ## What is proven where
 
-- `just fast` / `bash scripts/ci-local.sh required` syntax-checks every shell
-  entrypoint and runs the required local proof, then writes a no-write audit
-  snapshot under `target/jankurai/`.
+- `just fast` / `bash scripts/ci-local.sh required` syntax-checks (`bash -n`)
+  and lints (`shellcheck -S warning`) every shell entrypoint, proves the
+  vendored installer still matches the hub copy, runs the offline installer
+  self-test, and then writes a no-write audit snapshot under `target/jankurai/`.
 - `just security` runs gitleaks and cargo audit.
 - `just audit` writes `.jankurai/repo-score.json` and `.jankurai/repo-score.md`.
 - `just release` runs `ops/ci/release-audit-gate.sh`, the artifact-backed launch

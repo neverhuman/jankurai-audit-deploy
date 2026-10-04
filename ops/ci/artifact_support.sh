@@ -113,7 +113,7 @@ repo_slug_from_remote() {
 write_json_files() {
   local entrypoint="$1" sha tree generated_at
   sha="$(current_sha)"
-  tree="$(git rev-parse HEAD^{tree})"
+  tree="$(git rev-parse "HEAD^{tree}")"
   generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   python3 - "$out_dir" "$entrypoint" "$sha" "$tree" "$generated_at" "$workers" <<'PY'
 import json
@@ -183,7 +183,7 @@ sign_bundle() {
   sha="$(current_sha)"
   version="${SIGNRAIL_RELEASE_VERSION:-$sha}"
   rollback_target="${SIGNRAIL_ROLLBACK_TARGET:-$(git rev-parse HEAD^ 2>/dev/null || printf '%s' "$sha")}"
-  tree_sha="$(git rev-parse HEAD^{tree})"
+  tree_sha="$(git rev-parse "HEAD^{tree}")"
   ci_ir_hash="$(sha256_file_prefixed "$out_dir/manifest.json")"
   runner_rootfs_digest="$(sha256_text "$(uname -a)|${ImageOS:-local}|${ImageVersion:-local}")"
   toolchain_material="$(rustc -Vv 2>/dev/null || true; cargo -V 2>/dev/null || true; node --version 2>/dev/null || true; npm --version 2>/dev/null || true)"

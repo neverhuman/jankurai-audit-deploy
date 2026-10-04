@@ -39,7 +39,7 @@ case "${target}" in
 
     step "sha256 + Sigstore bundle"
     (
-      cd "${dist}"
+      cd "${dist}" || exit 1
       shasum -a 256 "${stage}.pkg" > "${stage}.pkg.sha256"
     )
     bash "${CI_ROOT}/ops/ci/release-sign-blob.sh" "${dist}/${stage}.pkg"

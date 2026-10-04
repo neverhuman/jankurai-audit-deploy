@@ -12,7 +12,7 @@
 # local runner and CI execute the exact replacement command.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-cd "${CI_ROOT}"
+cd "${CI_ROOT}" || exit 1
 
 mkdir -p target/jankurai .jankurai target/jankurai/security \
          target/jankurai/proofbind target/jankurai/proofmark

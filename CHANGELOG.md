@@ -9,6 +9,14 @@ The authoritative version string lives in [`VERSION`](VERSION).
 
 ### Added
 
+- `scripts/installer-selftest.sh`: an offline, Node-free self-test of
+  `jankurai-installer.sh` (argument rejection, `--print-asset-name`, and the
+  signing-path and certificate-identity selection it derives from the requested
+  repository and tag), driven by fixture release assets and stub verifiers.
+- `shellcheck -S warning` over `scripts/*.sh`, `ops/ci/*.sh`, and
+  `jankurai-installer.sh` in `ops/ci/required.sh`, alongside the existing
+  `bash -n` pass; the lane fails if shellcheck is not installed, and
+  `scripts/ci-doctor.sh` now reports it.
 - Root `Justfile` command surface with `setup`, `fast`, `check`, `verify`,
   `security`, `audit`, and `release` lanes for one-command setup and validation.
 - `ops/ci/pr-ci.sh`, the pull-request CI entrypoint the self-hosted

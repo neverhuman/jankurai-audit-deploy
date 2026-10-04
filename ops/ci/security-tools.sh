@@ -45,7 +45,7 @@ if ! want_version "gitleaks" "$GITLEAKS_VERSION"; then
   trap 'rm -rf "$tmp"' EXIT
   local_bin="${HOME}/.local/bin"
   mkdir -p "$local_bin"
-  ( cd "$tmp"
+  ( cd "$tmp" || exit 1
     curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${asset}"
     curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
     grep " ${asset}\$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum -c -

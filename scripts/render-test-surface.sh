@@ -27,6 +27,7 @@ count_tests() {
 }
 
 # Workspace-wide totals
+# shellcheck disable=SC2038 # repo paths carry no whitespace; xargs keeps the one-pass count
 TOTAL_TESTS=$(find crates -type f -name '*.rs' \
     \( -path '*/tests/fixtures/*' -prune -o -print \) 2>/dev/null \
   | xargs grep -lE '#\[test\]' 2>/dev/null \
@@ -36,6 +37,7 @@ INTEGRATION_FILES=$(find crates -type f -name '*.rs' 2>/dev/null \
   | awk -F/ 'index($0, "/tests/") > 0 && index($0, "/fixtures/") == 0 && index($0, "/expected/") == 0' \
   | awk -F/ '{ for (i=1;i<=NF;i++) if ($i=="tests" && i==NF-1) print; }' \
   | wc -l | tr -d ' ')
+# shellcheck disable=SC2038 # repo paths carry no whitespace; xargs keeps the one-pass count
 PLAYWRIGHT_TESTS=$(find packages/ux-qa/tests -type f \( -name '*.spec.ts' -o -name '*.test.ts' \) 2>/dev/null \
   | xargs grep -cE '^[[:space:]]*test\(' 2>/dev/null \
   | awk -F: '{s+=$2} END{print s+0}')
@@ -169,7 +171,6 @@ phases=$(count_tests '#\[test\]' \
 
 # Render a horizontal bar chart. Bars normalised to MAX_BAR characters of '█'.
 MAX_BAR=24
-LABEL_WIDTH=14
 
 render_block() {
   local categories=(

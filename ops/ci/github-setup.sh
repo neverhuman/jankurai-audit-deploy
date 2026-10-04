@@ -6,7 +6,7 @@ repo_root="$PWD"
 mkdir -p target/jankurai
 if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
   sudo apt-get update
-  sudo apt-get install -y pkg-config libssl-dev libfuse3-dev
+  sudo apt-get install -y pkg-config libssl-dev libfuse3-dev shellcheck
   if [[ -f paper/jankurai.tex ]]; then
     sudo apt-get install -y latexmk texlive-latex-extra texlive-fonts-recommended texlive-publishers
   fi

@@ -121,6 +121,12 @@ Static analysis of GitHub workflows. Run before pushing any `.github/workflows/`
 change — caught two cache-poisoning issues in the v1.0.0 PR before they
 reached CI.
 
+### `just fast` / `just test`
+The required lane (`bash scripts/ci-local.sh required`): `bash -n` plus
+`shellcheck -S warning` over `scripts/*.sh`, `ops/ci/*.sh` and
+`jankurai-installer.sh`, the vendored-installer check, and the offline
+installer self-test. No network, a few seconds. Needs `shellcheck` on PATH.
+
 ## Editing the lane
 
 `scripts/ci-local.sh` is the source of truth. When a CI workflow step
