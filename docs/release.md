@@ -14,9 +14,10 @@ pattern `jankurai-deploy-v<MAJOR.MINOR.PATCH>-split.<N>` as described in
 
 ## Changelog
 
-Every release records its user-visible changes in
-[`CHANGELOG.md`](../CHANGELOG.md) under a heading that matches the new `VERSION`.
-The `Unreleased` section is promoted to a dated version heading at tag time.
+Release notes in [`CHANGELOG.md`](../CHANGELOG.md) are generated when a release
+is cut from the commits since the previous release, using their subjects and
+`Todo:` trailers. The `Unreleased` section is promoted to a dated version
+heading at tag time.
 
 ## Release automation
 
@@ -107,7 +108,8 @@ If a release regresses:
 2. Re-point consumers and the installer at that immutable tag; tags are never
    moved or deleted.
 3. Open a revert commit that restores the previous `VERSION` and `CHANGELOG.md`
-   state, and add a `### Fixed` entry describing the rollback.
+   state; its subject and `Todo:` trailer will appear in the next generated
+   release notes.
 4. Re-run `just check` to confirm the rolled-back tree is green before
    re-publishing.
 

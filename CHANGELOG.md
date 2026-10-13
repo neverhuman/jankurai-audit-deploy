@@ -1,5 +1,7 @@
 # Changelog
 
+This file is written when a release is cut: its notes are generated from the commits since the previous release. Do not add entries by hand; write a commit subject that says what changed.
+
 All notable changes to jankurai-deploy are documented in this file. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

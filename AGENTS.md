@@ -19,3 +19,4 @@ split family: the release, signing, mirroring, and split-generator member.
   [release](docs/release.md), [exceptions](docs/exceptions.md),
   [CI-local](docs/ci-local.md), and [decisions](docs/decisions/README.md).
 - Run `bash scripts/ci-local.sh required` (or `just fast`) before handing off.
+- Do not edit CHANGELOG.md in a change: release notes are generated at release time from commit subjects and Todo: trailers.
