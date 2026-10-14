@@ -27,15 +27,15 @@ just setup
 # Deterministic fast lane (required local proof + no-write self-audit).
 just fast
 
-# Full gate the forge runs: required lane, gitleaks, SBOM + grype, ratchet audit.
+# Full gate the forge runs: required lane, gitleaks, SBOM, ratchet audit.
 just check
 ```
 
 The full command surface lives in the root [`Justfile`](Justfile). Continuous
 integration runs on the forge: [`.jeryu/ci.toml`](.jeryu/ci.toml) declares one
 `required` lane, [`ops/ci/pr-ci.sh`](ops/ci/pr-ci.sh), which runs
-[`ops/ci/check.sh`](ops/ci/check.sh) and bundles its evidence under
-`target/jankurai/evidence/<commit>/`. Run it locally with
+[`ops/ci/check.sh`](ops/ci/check.sh) and leaves a local, unsigned evidence
+bundle in the workspace under `target/jankurai/evidence/<commit>/`. Run it locally with
 `bash scripts/ci-local.sh pr-ci`. GitHub is a publishing mirror only and runs
 no workflows. The local-CI contract is documented in
 [`docs/ci-local.md`](docs/ci-local.md).

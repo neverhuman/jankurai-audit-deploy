@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Install pinned upstream Linux tools after verifying their published checksums:
-# the gitleaks, syft and grype the forge gate (ops/ci/check.sh) runs, and the
+# the gitleaks and syft the forge gate (ops/ci/check.sh) runs, and the
 # actionlint scripts/lint-actions.sh needs if a workflow directory appears.
+# The gitleaks version comes from ops/ci/lib.sh, the one pin for it.
 set -euo pipefail
+# shellcheck source=ops/ci/lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 [[ "$(uname -s)/$(uname -m)" == Linux/x86_64 ]]
 install_root="${CARGO_HOME:-$HOME/.cargo}/bin"
 mkdir -p "$install_root"
@@ -20,7 +23,6 @@ install_release() {
   install -m 0755 "$archive_root/$binary" "$install_root/$binary"
   "$install_root/$binary" --version
 }
-install_release gitleaks/gitleaks 8.21.2 gitleaks x64
+install_release gitleaks/gitleaks "$GITLEAKS_VERSION" gitleaks x64
 install_release rhysd/actionlint 1.7.8 actionlint amd64
 install_release anchore/syft 1.40.0 syft amd64
-install_release anchore/grype 0.99.0 grype amd64

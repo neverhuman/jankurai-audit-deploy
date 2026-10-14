@@ -5,10 +5,11 @@
 # execute the exact same command: `bash scripts/ci-local.sh pr-ci`.
 #
 # It runs the full gate in ops/ci/check.sh (required lane, gitleaks, syft
-# SBOM, grype, ratchet audit against protected main). Whatever the outcome,
-# it then writes one digest-bound evidence bundle, so a failing head still
-# leaves its partial evidence behind for review. Nothing is skipped: a
-# missing tool fails the run.
+# SBOM, ratchet audit against protected main) with the governed auditor only:
+# a JANKURAI override is refused here. Whatever the outcome, it then writes a
+# local evidence bundle in the workspace, so a failing head still leaves its
+# partial output behind for review. Nothing is skipped: a missing tool fails
+# the run.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
@@ -25,4 +26,4 @@ collect() {
 trap collect EXIT
 
 echo "[ci] pr-ci: full gate (ops/ci/check.sh)"
-bash ops/ci/check.sh
+JANKURAI_REQUIRE_GOVERNED=1 bash ops/ci/check.sh

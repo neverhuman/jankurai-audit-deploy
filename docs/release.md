@@ -25,7 +25,12 @@ forge gate. This repository builds and signs no binaries: release binaries are
 built on our build hosts and signed with a release key we hold by the hub
 (`root/jankurai`, `ops/release/`; v1.7.2 was the first key-signed release), and
 the vendored installer here (`jankurai-installer.sh`, synced from the hub by
-`scripts/sync-hub-installer.sh`) verifies them against the pinned public key.
+`scripts/sync-hub-installer.sh`) verifies them against a pinned public key.
+That pin is not provisioned in this repository yet: the installer's
+`release_keys` entry is all zeros, so it refuses every key-signed tag (v1.7.2
+and later, including `action.yml`'s default) until the 1.7.3 release change
+(#7) vendors the hub's key and pin. The refusal is deliberate and tested by
+`scripts/installer-selftest.sh`.
 
 1. Bump [`VERSION`](../VERSION) and promote the `Unreleased` section of
    [`CHANGELOG.md`](../CHANGELOG.md).
@@ -51,11 +56,18 @@ hub. Release builds depend on immutable tags, never branches.
 - **Signing**: done by the hub with the held release key; see the hub's
   `docs/release.md`. Nothing in this repository signs.
 - **SBOM**: `ops/ci/check.sh` writes a CycloneDX SBOM with `syft` to
-  `target/jankurai/security/sbom.json` and scans it with `grype --fail-on high`.
-- **Provenance**: `gitleaks` scans the full history for secrets on every gate
-  run, and the evidence bundle under `target/jankurai/evidence/<commit>/` keeps
-  the SBOM, the audit reports and the auditor's version and SHA-256 with a
-  `MANIFEST.sha256` and a `receipt.json` naming the commit, tree and result.
+  `target/jankurai/security/sbom.json` and records its component count. The
+  repository has no package manifests, so the SBOM is empty and no
+  vulnerability scan runs on it.
+- **Auditor identity**: the gate scores only with the governed jankurai
+  install whose SHA-256 matches the host's authority stamp (see
+  [ci-local.md](ci-local.md)).
+- **Run evidence (not provenance)**: `gitleaks` scans the full history for
+  secrets on every gate run. Each run leaves a local bundle in the gate
+  workspace under `target/jankurai/evidence/<commit>/` (SBOM, audit reports,
+  auditor identity, `MANIFEST.sha256`, `receipt.json`). It is unsigned and lives
+  only as long as the workspace, so it supports review of a run; it does not
+  prove anything against whoever ran the gate and is not release provenance.
 - **Actions surface**: no workflow is committed (GitHub is a publishing
   mirror). `action.yml`, the composite action downstream workflows run, is
   linted by `zizmor` on every required run, and its third-party `uses:` is
@@ -66,13 +78,14 @@ hub. Release builds depend on immutable tags, never branches.
 A release is only allowed to ship when every launch gate below is backed by a
 real artifact or command:
 
-- **Security**: the forge gate runs gitleaks, the syft SBOM and grype, and the
+- **Security**: the forge gate runs gitleaks and the syft SBOM, and the
   required lane lints `action.yml`; `just security` runs the secret scan and
   action lint locally.
 - **Backups**: the Jeryu forge keeps an authoritative copy of every mirrored
   commit and tag, so a lost GitHub mirror is restored from the forge.
-- **Monitoring**: the evidence bundle and `.jankurai/repo-score.{json,md}` from
-  each gate run give a trail; a regression shows up as a failed ratchet.
+- **Monitoring**: a score regression shows up as a failed ratchet on the
+  forge's `required` check; the local evidence bundle helps review that run
+  while its workspace lasts.
 - **Rollback**: documented below; tags are immutable, so any prior release is
   re-fetchable.
 - **Abuse controls**: no CI credential lives on GitHub; the mirror only

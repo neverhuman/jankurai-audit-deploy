@@ -138,15 +138,22 @@ release. This section covers everything on `main` since `1.7.0-split.0`.
 
 - The forge `required` lane (`ops/ci/pr-ci.sh`, declared in `.jeryu/ci.toml`)
   runs the full gate, `ops/ci/check.sh` (renamed from `ops/ci/github-check.sh`):
-  the required lane, gitleaks over the full history, a syft CycloneDX SBOM, a
-  grype scan of it (`--fail-on high`, new), and the ratchet audit against
+  the required lane, gitleaks over the full history, a syft CycloneDX SBOM
+  (with its component count recorded), and the ratchet audit against
   protected main. It used to run only the required lane plus an advisory audit
   that skipped itself when `jankurai` was missing; a missing tool now fails the
-  run. `ops/ci/collect-evidence.sh` writes a per-commit evidence bundle
-  (SBOM, audit reports, auditor version and SHA-256, `MANIFEST.sha256`,
-  `receipt.json`) on every run, pass or fail.
-- `scripts/forge-gate-test.sh`, run by the required lane, pins the lane
-  declaration and the steps of `pr-ci.sh` and `check.sh`, rejects a
+  run. `ops/ci/collect-evidence.sh` leaves a local, unsigned bundle of the
+  run's output in the workspace (SBOM, audit reports, auditor identity,
+  `MANIFEST.sha256`, `receipt.json`), pass or fail; it is review evidence, not
+  provenance.
+- The gate's auditor is the governed install only: `$HOME/.jeryu/bin/jankurai`
+  whose SHA-256 matches `binary_sha256` in the host's authority stamp, with
+  both files owned by the running user and not group/world-writable. It is
+  never taken from PATH and there is no in-repo version pin. `JANKURAI=` is a
+  local override recorded as unverified, and `pr-ci.sh` refuses it.
+- `scripts/forge-gate-test.sh`, run by the required lane, is a tripwire: it
+  pins the lane declaration and the steps of `pr-ci.sh` and `check.sh`,
+  exercises the auditor identity check against a fake host install, rejects a
   `just required` recipe that would shadow `pr-ci.sh` on the forge, and rejects
   any committed `.github/workflows`.
 - `scripts/lint-actions.sh`, run by the required lane and `just security`, lints
@@ -156,12 +163,14 @@ release. This section covers everything on `main` since `1.7.0-split.0`.
 - `action.yml` passes its inputs to `run:` steps through `env:` instead of
   `${{ inputs.* }}` interpolation, fixing six high zizmor template-injection
   findings, and rejects an unknown `mode`.
-- `ops/ci/install-security-tools.sh` also installs syft; `scripts/ci-doctor.sh`
-  checks grype, zizmor and actionlint.
+- `ops/ci/install-security-tools.sh` also installs syft and takes its gitleaks
+  version from `ops/ci/lib.sh` (8.30.0; it installed 8.21.2 before);
+  `scripts/ci-doctor.sh` checks zizmor and actionlint.
+- `jankurai-installer.sh` is no longer declared a generated zone; it is a
+  byte-identical vendored copy checked by `scripts/check-vendored-installer.sh`.
 
 - Replaced the forked `jankurai-installer.sh` with a byte-identical copy of the
-  hub's verified installer, recorded in `agent/vendor/hub-installer.lock` and
-  `agent/generated-zones.toml`, so the installer published with a release has
+  hub's verified installer, recorded in `agent/vendor/hub-installer.lock`, so the installer published with a release has
   the hub's rename-aware Sigstore signer and release-key pinning instead of a
   default that fails verification for tags after v1.7.1.
 - Raised the `action.yml` `release-tag` default to the family release `v1.7.2`

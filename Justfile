@@ -35,7 +35,7 @@ build-jankurai:
     bash ../jankurai/scripts/family.sh build --release
 
 # Run the full gate the forge runs (ops/ci/pr-ci.sh minus the evidence
-# bundle): required lane, gitleaks, syft SBOM, grype, ratchet audit.
+# bundle): required lane, gitleaks, syft SBOM, ratchet audit.
 check:
     bash ops/ci/check.sh
 

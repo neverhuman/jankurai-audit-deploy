@@ -70,7 +70,6 @@ check_cargo_subcommand audit "cargo install cargo-audit --locked"
 check_cmd zizmor "bash ops/ci/security-tools.sh (pinned zizmor for scripts/lint-actions.sh)"
 check_cmd actionlint "bash ops/ci/install-security-tools.sh"
 check_cmd syft "brew install syft (linux: bash ops/ci/install-security-tools.sh)"
-check_cmd grype "brew install grype (linux: bash ops/ci/install-security-tools.sh)"
 
 # Paper lane
 check_cmd latexmk "brew install --cask mactex (or texlive on linux)"

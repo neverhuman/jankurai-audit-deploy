@@ -1,5 +1,6 @@
-# Homebrew formula metadata for the release pipeline.
-# release-publish renders this template to dist/jankurai-homebrew.rb.
+# Homebrew formula template. Its renderer, ops/ci/release-publish.sh, was
+# deleted with the GitHub workflows; nothing in this repository renders or
+# publishes it now. Kept for an owner decision on Homebrew distribution.
 class Jankurai < Formula
   desc "Audit CLI for trustworthy AI-assisted merge"
   homepage "https://github.com/neverhuman/jankurai"
