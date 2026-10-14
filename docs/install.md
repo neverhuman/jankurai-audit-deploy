@@ -19,7 +19,9 @@ it rotates is in [`release-signing.md`](release-signing.md).
 The command below and the `action.yml` `release-tag` default name `v1.7.4`, the
 newest published release (`published_release` in the lock). The family release
 `v1.7.5` follows its publication: once the hub has published it, both move to
-`v1.7.5` together, and the required lane checks they agree with the lock. Running this repository's own `jankurai-installer.sh` without `--tag` (or
+`v1.7.5` together, and the required lane checks they agree with the lock.
+
+Running this repository's own `jankurai-installer.sh` without `--tag` (or
 `JANKURAI_RELEASE_TAG`) uses the installer's default, `v1.7.5`, because it is the
 hub's file byte for byte; until `v1.7.5` is published that download fails, so
 pass `--tag v1.7.4`.
