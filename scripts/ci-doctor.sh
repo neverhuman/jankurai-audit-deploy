@@ -53,6 +53,8 @@ check_cmd gh "brew install gh"
 check_cmd jq "brew install jq"
 check_cmd rg "brew install ripgrep"
 check_cmd shellcheck "brew install shellcheck (apt-get install shellcheck)"
+check_cmd git "brew install git (apt-get install git)"
+check_cmd openssl "brew install openssl (apt-get install openssl)"
 check_cmd awk "system"
 check_cmd python3 "brew install python"
 

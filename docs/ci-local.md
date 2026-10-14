@@ -124,8 +124,13 @@ reached CI.
 ### `just fast` / `just test`
 The required lane (`bash scripts/ci-local.sh required`): `bash -n` plus
 `shellcheck -S warning` over `scripts/*.sh`, `ops/ci/*.sh` and
-`jankurai-installer.sh`, the vendored-installer check, and the offline
-installer self-test. No network, a few seconds. Needs `shellcheck` on PATH.
+`jankurai-installer.sh`, the vendored-installer check with its mandatory hub
+comparison and its negative test, and the offline installer self-test. The hub
+comparison reads the hub `root/jankurai`: the sibling `../jankurai` when it
+holds the locked commits on `origin/main`, otherwise a fresh clone next to this
+checkout's origin. It fails when the hub cannot be read. Needs `shellcheck`,
+`git` and `openssl` on PATH and read access to the hub (network unless the
+sibling is present); a few seconds.
 
 ## Editing the lane
 

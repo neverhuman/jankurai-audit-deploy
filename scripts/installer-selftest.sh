@@ -12,8 +12,8 @@
 # verifier downloads come from a stub `curl` that copies local fixture files, and
 # `uname` is stubbed so the test runs the Linux x86-64 path on any host. A copy of
 # the installer is patched the way the hub harness patches it: the pinned verifier
-# hashes become the fixture hashes, and the unprovisioned release key pin becomes
-# the fixture key's hash. The committed installer is never modified.
+# hashes become the fixture hashes, and the release key pin becomes the fixture
+# key's hash. The committed installer is never modified.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 repo_root="$PWD"
@@ -120,10 +120,30 @@ patch_hash b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f "$do
 printf '%s\n' "$key_bytes" > "$work/$key_name"
 key_hash="$(sha256 "$work/$key_name")"
 unprovisioned="$work/installer-unprovisioned.sh"
+# The committed pin's value is checked against the vendored key and the lock by
+# scripts/check-vendored-installer.sh. Here only its shape matters: exactly one
+# line names the key (compared literally, not as a regex) with a 64-hex hash.
+# Any coverage range is accepted, so a rotation that closes this key's range and
+# appends the next key does not break the self-test.
+[[ "$(awk -F'|' -v name="$key_name" '$1 == name && $2 ~ /^[0-9a-f]{64}$/' "$installer" | grep -c .)" == 1 ]] ||
+  bad "the installer must pin $key_name exactly once with a 64-hex hash"
+# Offline, on every run: the committed installer's pin is not a placeholder and
+# is exactly the SHA-256 of the vendored key file (the hub comparison in
+# check-vendored-installer.sh then ties that file to the hub).
+committed_pin="$(awk -F'|' -v name="$key_name" '$1 == name { print $2 }' "$repo_root/jankurai-installer.sh")"
+[[ "$committed_pin" =~ ^[0-9a-f]{64}$ && ! "$committed_pin" =~ ^0+$ ]] ||
+  bad "the committed installer's pin for $key_name is a placeholder or malformed: ${committed_pin:-none}"
+[[ "$committed_pin" == "$(sha256 "$repo_root/agent/vendor/release-keys/$key_name")" ]] ||
+  bad "the committed installer's pin for $key_name is not the SHA-256 of agent/vendor/release-keys/$key_name"
+# The unprovisioned copy pins the all-zero placeholder; the main copy pins the
+# fixture key, whatever real key the committed installer pins.
+repin() { # repin <file> <hash>: rewrite the hash field of the line naming $key_name
+  awk -F'|' -v OFS='|' -v name="$key_name" -v hash="$2" '$1 == name { $2 = hash } { print }' "$1" > "$1.tmp"
+  mv "$1.tmp" "$1"
+}
 cp "$installer" "$unprovisioned"
-grep -qE "^$key_name\|0{64}\|v1\.7\.2\|\$" "$installer" ||
-  bad "the release key pin line for $key_name is no longer an unprovisioned placeholder"
-sed -i "s/^$key_name|0\{64\}|/$key_name|$key_hash|/" "$installer"
+repin "$unprovisioned" "$(printf '0%.0s' {1..64})"
+repin "$installer" "$key_hash"
 
 # --- fixture release assets ---------------------------------------------------
 # Build the asset set a release of this version would publish, so the installer
@@ -264,8 +284,7 @@ accepts 'v1.7.2 under the old hub name still uses the release key' \
 refuses 'a key that does not match its pin is refused' 'does not match its pin' \
   1.7.2 key-wrong-key neverhuman/jankurai-audit
 
-# The committed installer pins an all-zero (unprovisioned) key, so every
-# key-signed tag must be refused until a real key is pinned.
+# An all-zero (unprovisioned) key pin refuses every key-signed tag.
 INSTALLER_UNDER_TEST="$unprovisioned" \
   refuses 'an unprovisioned key pin refuses key-signed tags' 'not provisioned' \
   1.7.2 key neverhuman/jankurai-audit

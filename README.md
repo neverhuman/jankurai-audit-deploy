@@ -48,6 +48,7 @@ integration runs the same lanes under
 | `docs/` | architecture, testing, boundaries, release, and exception docs |
 | `action.yml` | composite GitHub Action that installs the auditor |
 | `jankurai-installer.sh` | standalone installer published with each release, vendored byte-for-byte from the hub |
+| `agent/vendor/` | hub-installer lock and the vendored release-signing public key ([provenance](docs/release-signing.md)) |
 
 ## Documentation
 

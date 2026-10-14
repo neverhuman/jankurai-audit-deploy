@@ -10,8 +10,36 @@ path = "jankurai-installer.sh"
 source_repo = "root/jankurai"
 source_path = "jankurai-installer.sh"
 # Hub commit that last changed the installer.
-source_commit = "9a101cda4bc32059a2c2f20a92e6d4948256507f"
-sha256 = "9a55b1e93947d0a3a009df2080694a5cc67318666fc25cb0673b189fe10b2c4e"
-# Release from the hub family.lock. The action.yml release-tag default and the
-# installer's own default tag both track this.
-family_release = "1.7.2"
+source_commit = "51572943e08fe743cdab8fd2ae9cdd66463e42fe"
+sha256 = "d3653397944304f624f70fd0185bb2bd0d9ae84dc6aa44bc5f066520b865056f"
+# Release from the hub family.lock. The installer's own default tag (hub bytes)
+# tracks this.
+family_release = "1.7.3"
+# Newest release actually published. The action.yml release-tag default and the
+# docs/install.md command track this, so @main never points at a tag that does not
+# exist yet. It moves to family_release once the hub has published that release.
+published_release = "1.7.2"
+
+# The release-signing public key the installer pins (release_keys table). The
+# key file is vendored byte-for-byte from the hub's release-keys/ directory,
+# where the owner committed it in root/jankurai PR #11 (merged as
+# cf5e0c8b078a978a5396af329460a116d7acc08b) after generating the pair with the
+# hub's ops/release/generate-signing-key.sh. scripts/check-vendored-installer.sh
+# requires sha256(release_signer_path) == release_signer_sha256 == the installer's pin,
+# and, in the required lane, that the installer and every vendored key are the
+# hub's bytes at source_commit / release_signer_source_commit, both on hub main.
+release_signer_name = "jankurai-release-2026.pub"
+release_signer_path = "agent/vendor/release-keys/jankurai-release-2026.pub"
+release_signer_source_path = "release-keys/jankurai-release-2026.pub"
+release_signer_source_commit = "cf5e0c8b078a978a5396af329460a116d7acc08b"
+release_signer_sha256 = "99f48af11e4e6463544652ddfaefb0e9953de15fb0802b174123ac2907ff06fc"
+# First tag the key signs; the empty last tag in the installer pin means the
+# key stays current until a rotation closes its range.
+release_signer_first_tag = "v1.7.2"
+# The installer's whole release_keys table, line for line (name|sha256|first
+# tag|last tag). The check refuses any other line, so a key cannot be added and a
+# range cannot be closed or moved without changing this list, and every key
+# named here must be vendored in agent/vendor/release-keys/ with this SHA-256.
+release_signers_table = [
+  "jankurai-release-2026.pub|99f48af11e4e6463544652ddfaefb0e9953de15fb0802b174123ac2907ff06fc|v1.7.2|",
+]

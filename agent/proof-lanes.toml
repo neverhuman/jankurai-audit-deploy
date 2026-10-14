@@ -12,7 +12,9 @@ cost = 5
 rules_covered = ["HLT-003-OWNERLESS-PATH", "HLT-004-UNMAPPED-PROOF", "HLT-042-CI-LOCAL-PARITY"]
 required_artifacts = ["target/jankurai/repo-score.json", "target/jankurai/repo-score.md"]
 timeout_seconds = 900
-requires_network = false
+# The required cascade reads the hub (a sibling checkout or a clone) for the
+# mandatory vendored-trust comparison.
+requires_network = true
 destructive = false
 
 [[lane]]

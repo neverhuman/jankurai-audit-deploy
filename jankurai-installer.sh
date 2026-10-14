@@ -5,7 +5,7 @@
 set -euo pipefail
 fail() { printf 'installer: %s\n' "$*" >&2; exit 1; }
 repo="${JANKURAI_RELEASE_REPO:-neverhuman/jankurai-audit}"
-tag="${JANKURAI_RELEASE_TAG:-v1.7.2}"
+tag="${JANKURAI_RELEASE_TAG:-v1.7.3}"
 install_dir="${JANKURAI_INSTALL_DIR:-$HOME/.local/bin}"
 product=jankurai
 verify_only=false
@@ -20,7 +20,7 @@ while [[ $# -gt 0 ]]; do
     --assets-dir) assets_dir="${2:?missing asset directory}"; shift 2 ;;
     --verify-only) verify_only=true; shift ;;
     --print-asset-name) print_asset=true; shift ;;
-    --help|-h) printf 'usage: jankurai-installer.sh [--tag v1.7.2] [--product jankurai|tuiwright] [--repo owner/repo] [--install-dir path] [--verify-only] [--print-asset-name] [--assets-dir path]\n'; exit 0 ;;
+    --help|-h) printf 'usage: jankurai-installer.sh [--tag v1.7.3] [--product jankurai|tuiwright] [--repo owner/repo] [--install-dir path] [--verify-only] [--print-asset-name] [--assets-dir path]\n'; exit 0 ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
@@ -53,7 +53,7 @@ fi
 # the downloaded key file must match its pinned SHA-256. An all-zero pin means the
 # key is not provisioned yet, and every tag it covers is refused.
 release_keys='
-jankurai-release-2026.pub|0000000000000000000000000000000000000000000000000000000000000000|v1.7.2|
+jankurai-release-2026.pub|99f48af11e4e6463544652ddfaefb0e9953de15fb0802b174123ac2907ff06fc|v1.7.2|
 '
 version_number() {
   local major minor patch
@@ -113,9 +113,17 @@ case "$target" in
     command -v unzip >/dev/null || fail 'missing system tool: unzip'
     ;;
 esac
+download() {
+  # Downloads are idempotent GETs into private files. Curl truncates partial
+  # output before retrying; verification happens only after a complete transfer.
+  curl --disable --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL \
+    --connect-timeout 15 --max-time 60 \
+    --retry 3 --retry-all-errors --retry-delay 1 --retry-max-time 180 \
+    "$1" -o "$2"
+}
 fetch_tool() {
   local url="$1" output="$2" expected="$3"
-  curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$output"
+  download "$url" "$output"
   [[ "$(sha256 "$output")" == "$expected" ]] || fail 'verification tool checksum mismatch'
 }
 # GitHub CLI verifies attestations, which only the keyless releases have.
@@ -141,7 +149,7 @@ for name in "${downloads[@]}"; do
   if [[ -n "$assets_dir" ]]; then
     cp "$assets_dir/$name" "$work/$name"
   else
-    curl --proto '=https' --tlsv1.2 -fsSL "$base/$name" -o "$work/$name"
+    download "$base/$name" "$work/$name"
   fi
 done
 identity="https://github.com/$signer/.github/workflows/release.yml@refs/tags/$tag"

@@ -18,8 +18,8 @@ green CI run. See [`docs/ci-local.md`](ci-local.md) for the per-lane contract.
 
 ## The required lane
 
-`ops/ci/required.sh` is the one lane every change must pass. It is offline and
-deterministic, and it covers the shell surface this repo releases from:
+`ops/ci/required.sh` is the one lane every change must pass. It is deterministic
+and offline except for one step, the hub comparison in step 3, and it covers the shell surface this repo releases from:
 
 1. `bash -n` over `scripts/*.sh`, `ops/ci/*.sh`, and `jankurai-installer.sh`.
 2. `shellcheck -S warning` over the same file set. The linter is a hard
@@ -28,9 +28,13 @@ deterministic, and it covers the shell surface this repo releases from:
    with `brew install shellcheck` or the distribution package
    (`scripts/ci-doctor.sh` reports it missing); suppress a deliberate finding
    with a `# shellcheck disable=SCxxxx` comment that says why.
-3. `scripts/check-vendored-installer.sh` — the installer is still the byte-exact
-   hub copy and targets the family release in the vendor lock.
-4. `scripts/installer-selftest.sh` — the offline installer self-test.
+3. `scripts/check-vendored-installer.sh` — the installer, the lock and the
+   vendored release keys agree, and (mandatory, so this step needs the hub:
+   see [`release-signing.md`](release-signing.md)) the installer and keys are
+   byte-identical to the hub's at the locked commits on hub `main`.
+4. `scripts/check-vendored-installer-test.sh` — every drift, a coherent key swap
+   and an unavailable hub are refused.
+5. `scripts/installer-selftest.sh` — the offline installer self-test.
 
 `jankurai-installer.sh` is byte-locked to the hub copy, so the self-test proves
 its behaviour without editing it. It copies the installer, repoints the pinned
