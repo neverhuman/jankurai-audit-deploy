@@ -1,6 +1,6 @@
 # Proof lanes for jankurai-deploy. Every lane command runs in this repo alone
 # and produces the artifacts it declares. Lanes mirror the root Justfile targets
-# and the ops/ci/*.sh entrypoints the GitHub workflows call.
+# and the ops/ci/*.sh entrypoints forge CI runs.
 
 [[lane]]
 name = "fast"

@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
-# Pull-request CI entrypoint for our self-hosted CI runner. Local runs and
-# forge CI execute the exact same commands. It is a thin
-# wrapper over the required local-CI lane in scripts/ci-local.sh (which itself
-# delegates to ops/ci/required.sh) plus a no-write jankurai self-audit so the
-# repo-score artifacts are produced on every PR.
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# Forge CI entrypoint. .jeryu/ci.toml declares this script as the `required`
+# lane, and the forge gate runs it for every pull request head (there is no
+# `just required` recipe, so the gate falls back to this file). Local runs
+# execute the exact same command: `bash scripts/ci-local.sh pr-ci`.
+#
+# It runs the full gate in ops/ci/check.sh (required lane, gitleaks, syft
+# SBOM, grype, ratchet audit against protected main). Whatever the outcome,
+# it then writes one digest-bound evidence bundle, so a failing head still
+# leaves its partial evidence behind for review. Nothing is skipped: a
+# missing tool fails the run.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-cd "${CI_ROOT}" || exit 1
+collect() {
+  local gate_exit=$?
+  trap - EXIT
+  local collect_exit=0
+  bash ops/ci/collect-evidence.sh "$gate_exit" || collect_exit=$?
+  if [[ "$gate_exit" -ne 0 ]]; then
+    exit "$gate_exit"
+  fi
+  exit "$collect_exit"
+}
+trap collect EXIT
 
-ensure_dir "${ARTIFACT_ROOT}"
-
-step "Required local CI cascade"
-bash scripts/ci-local.sh required
-
-step "Jankurai self-audit (repo-score)"
-if command -v jankurai >/dev/null 2>&1; then
-  jankurai audit . \
-    --no-score-history \
-    --json "${ARTIFACT_ROOT}/repo-score.json" \
-    --md "${ARTIFACT_ROOT}/repo-score.md"
-  assert_nonempty "${ARTIFACT_ROOT}/repo-score.json"
-  assert_nonempty "${ARTIFACT_ROOT}/repo-score.md"
-else
-  note "jankurai not on PATH; skipping self-audit on this runner"
-fi
-
-step "pr-ci complete"
+echo "[ci] pr-ci: full gate (ops/ci/check.sh)"
+bash ops/ci/check.sh

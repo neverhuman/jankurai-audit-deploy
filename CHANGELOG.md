@@ -10,9 +10,13 @@ The authoritative version string lives in [`VERSION`](VERSION).
 ### Removed
 
 - GitHub Actions workflows (`.github/workflows/`) and the workflow-only
-  `ops/ci/aggregate.sh`, plus the actionlint/zizmor workflow-lint steps. GitHub
-  is a publishing mirror only; CI, scoring, and release builds run on our own
-  servers.
+  `ops/ci/aggregate.sh`. GitHub is a publishing mirror only; CI runs on the
+  forge (below).
+- The GitHub-only scripts: `ops/ci/github-setup.sh`, `ops/ci/publish-ci-tag.sh`
+  (and the `ci-<sha>` tags it published), and the GitHub-OIDC release scripts
+  `ops/ci/release-build.sh`, `release-sign-blob.sh`, `release-macos-sign.sh` and
+  `release-publish.sh`. The hub builds release binaries and signs them with the
+  held release key, as it has since v1.7.2.
 
 ## [1.7.5] - 2026-10-14
 
@@ -121,9 +125,8 @@ release. This section covers everything on `main` since `1.7.0-split.0`.
   `scripts/ci-doctor.sh` now reports it.
 - Root `Justfile` command surface with `setup`, `fast`, `check`, `verify`,
   `security`, `audit`, and `release` lanes for one-command setup and validation.
-- `ops/ci/pr-ci.sh`, the pull-request CI entrypoint the self-hosted
-  `.github/workflows/ci.yml` runner calls, so local runs and CI execute identical
-  commands.
+- `ops/ci/pr-ci.sh`, the pull-request CI entrypoint (now the forge `required`
+  lane), so local runs and CI execute identical commands.
 - Agent-readable documentation: `README.md`, `docs/architecture.md`,
   `docs/boundaries.md`, `docs/testing.md`, `docs/release.md`, and
   `docs/exceptions.md`.
@@ -132,6 +135,29 @@ release. This section covers everything on `main` since `1.7.0-split.0`.
   member.
 
 ### Changed
+
+- The forge `required` lane (`ops/ci/pr-ci.sh`, declared in `.jeryu/ci.toml`)
+  runs the full gate, `ops/ci/check.sh` (renamed from `ops/ci/github-check.sh`):
+  the required lane, gitleaks over the full history, a syft CycloneDX SBOM, a
+  grype scan of it (`--fail-on high`, new), and the ratchet audit against
+  protected main. It used to run only the required lane plus an advisory audit
+  that skipped itself when `jankurai` was missing; a missing tool now fails the
+  run. `ops/ci/collect-evidence.sh` writes a per-commit evidence bundle
+  (SBOM, audit reports, auditor version and SHA-256, `MANIFEST.sha256`,
+  `receipt.json`) on every run, pass or fail.
+- `scripts/forge-gate-test.sh`, run by the required lane, pins the lane
+  declaration and the steps of `pr-ci.sh` and `check.sh`, rejects a
+  `just required` recipe that would shadow `pr-ci.sh` on the forge, and rejects
+  any committed `.github/workflows`.
+- `scripts/lint-actions.sh`, run by the required lane and `just security`, lints
+  the published composite action `action.yml` with `zizmor --offline` (and any
+  workflow directory with actionlint + zizmor). zizmor is pinned at 1.25.2
+  everywhere (was 1.12.0 here, 1.25.2 in the deleted workflow).
+- `action.yml` passes its inputs to `run:` steps through `env:` instead of
+  `${{ inputs.* }}` interpolation, fixing six high zizmor template-injection
+  findings, and rejects an unknown `mode`.
+- `ops/ci/install-security-tools.sh` also installs syft; `scripts/ci-doctor.sh`
+  checks grype, zizmor and actionlint.
 
 - Replaced the forked `jankurai-installer.sh` with a byte-identical copy of the
   hub's verified installer, recorded in `agent/vendor/hub-installer.lock` and

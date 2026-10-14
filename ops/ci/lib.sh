@@ -1,14 +1,14 @@
-# Shared helpers for ops/ci/*.sh. Sourced by every job script so the
-# workflow and the local runner take identical paths.
+# Shared helpers for ops/ci/*.sh. Sourced by the lane scripts so forge CI
+# and the local runner take identical paths.
 # shellcheck shell=bash
 
 set -euo pipefail
 
-# Pinned tool versions. The CI workflow installs from these; local runners
-# match by reading the same file via `ops/ci/lib.sh`.
+# Pinned tool versions. ops/ci/security-tools.sh installs from these, and the
+# forge gate hosts carry the same pins in their sealed tool cache.
 GITLEAKS_VERSION="${GITLEAKS_VERSION:-8.30.0}"
 CARGO_AUDIT_VERSION="${CARGO_AUDIT_VERSION:-0.22.1}"
-ZIZMOR_VERSION="${ZIZMOR_VERSION:-1.12.0}"
+ZIZMOR_VERSION="${ZIZMOR_VERSION:-1.25.2}"
 CARGO_LLVM_COV_VERSION="${CARGO_LLVM_COV_VERSION:-0.6.16}"
 CARGO_MUTANTS_VERSION="${CARGO_MUTANTS_VERSION:-27.0.0}"
 NODE_VERSION="${NODE_VERSION:-22}"

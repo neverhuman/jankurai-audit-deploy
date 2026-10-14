@@ -35,7 +35,7 @@
     },
     "action.yml": {
       "command": "bash scripts/ci-local.sh required",
-      "purpose": "verify the composite GitHub Action entrypoint stays coherent"
+      "purpose": "lint the composite GitHub Action with zizmor and check its release-tag default"
     },
     "jankurai-installer.sh": {
       "command": "bash scripts/ci-local.sh required",
@@ -43,11 +43,11 @@
     },
     ".jeryu/": {
       "command": "bash scripts/ci-local.sh required",
-      "purpose": "verify local Jeryu and GitHub mirror metadata"
+      "purpose": "verify the forge gate declaration and its contract test"
     },
     ".github/": {
       "command": "bash scripts/ci-local.sh required",
-      "purpose": "verify GitHub templates and CODEOWNERS stay coherent"
+      "purpose": "verify no GitHub workflow is committed (GitHub is a publishing mirror)"
     },
     "agent/": {
       "command": "bash scripts/ci-local.sh required",
@@ -78,7 +78,7 @@
       "purpose": "required local proof for jankurai-deploy"
     },
     ".gitleaksignore": {
-      "command": "bash ops/ci/github-check.sh",
+      "command": "bash ops/ci/check.sh",
       "purpose": "scan secrets with exact historical documentation fingerprints"
     }
   }

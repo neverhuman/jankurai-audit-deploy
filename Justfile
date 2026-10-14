@@ -1,9 +1,10 @@
 # jankurai-deploy root command surface.
 # One-command setup and validation lanes for agents and CI.
 # Every lane below is deterministic and runnable from the repo root, and each
-# one delegates to the same ops/ci/*.sh and scripts/*.sh entrypoints that
-# forge CI calls, so local runs and CI execute identical commands (see
-# docs/ci-local.md).
+# one delegates to the same ops/ci/*.sh and scripts/*.sh entrypoints forge CI
+# runs, so local runs and CI execute identical commands (see docs/ci-local.md).
+# There is deliberately no `required` recipe: the forge gate would run it in
+# place of ops/ci/pr-ci.sh, the lane .jeryu/ci.toml declares.
 
 # Default: list available lanes.
 default:
@@ -33,17 +34,18 @@ fast:
 build-jankurai:
     bash ../jankurai/scripts/family.sh build --release
 
-# Run the full local check: fast lane, security scanning, release audit gate,
-# and the jankurai self-audit. This is the command CI mirrors per job.
+# Run the full gate the forge runs (ops/ci/pr-ci.sh minus the evidence
+# bundle): required lane, gitleaks, syft SBOM, grype, ratchet audit.
 check:
-    bash ops/ci/github-check.sh
+    bash ops/ci/check.sh
 
 # Verify is an alias of check for agents that look for a `verify` lane.
 verify: check
 
-# Lint the shell surface (bash -n via the required lane).
+# Lint the shell and GitHub Actions surface: the required lane (bash -n,
+# shellcheck, zizmor action.yml, installer checks).
 lint:
-    bash ops/ci/quality-gates.sh
+    bash ops/ci/required.sh
 
 fmt:
     bash ops/ci/quality-gates.sh
@@ -52,12 +54,11 @@ fmt:
 test:
     bash scripts/ci-local.sh required
 
-# Security lane: secret scanning (gitleaks) plus dependency vulnerability
-# scanning (cargo audit). Installs pinned tools then runs the strict scan.
+# Security lane: secret scanning (gitleaks), action lint, and script digests.
 security:
     bash tools/security-lane.sh
 
-# Jankurai self-audit lane: writes the repo-score artifacts that CI uploads.
+# Jankurai self-audit lane: writes the repo-score artifacts the forge gate bundles.
 # Mirrors the jankurai audit + repo-score control plane in ops/ci/audit.sh.
 audit:
     mkdir -p .jankurai

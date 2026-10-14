@@ -1,134 +1,90 @@
 # Running CI locally
 
-Every CI lane has a matching `just` recipe so failures are caught on the
-developer's machine first. CI runs on the forge and our own hosts; GitHub is a
-publishing mirror only and runs no workflows. Use this as the contract between
-local work and the forge merge gate.
+CI runs on the forge. GitHub is a publishing mirror only and runs no
+workflows. Every lane the forge runs has a local command that executes the same
+script, so a failure shows up on the developer's machine first. Use this as the
+contract between local work and the forge merge gate.
+
+## The forge gate
+
+[`.jeryu/ci.toml`](../.jeryu/ci.toml) declares one lane, `required`, which runs
+[`ops/ci/pr-ci.sh`](../ops/ci/pr-ci.sh). The forge gate runs `just required`
+when the Justfile has that recipe and `ops/ci/pr-ci.sh` otherwise; this
+repository deliberately has no `just required`, and
+[`scripts/forge-gate-test.sh`](../scripts/forge-gate-test.sh) fails the required
+lane if one appears or if the declaration and scripts drift apart.
+
+`ops/ci/pr-ci.sh` runs [`ops/ci/check.sh`](../ops/ci/check.sh) and then writes an
+evidence bundle to `target/jankurai/evidence/<commit>/` (the SBOM, the audit
+reports, the auditor's version and digest, a `MANIFEST.sha256` and a
+`receipt.json` naming the commit, tree and gate result), pass or fail.
 
 ## Quick reference
 
-| Recipe           | Mirrors CI lane                             | Typical runtime |
-| ---------------- | ------------------------------------------- | --------------- |
-| `just ci-doctor` | prereq check — no CI equivalent             | < 1 s           |
-| `just ci-quick`  | `jankurai / test (ubuntu-latest, macos-latest)` | 5–10 min    |
-| `just ci-coverage` | `jankurai / coverage (llvm-cov + cargo-mutants)` | 10–20 min |
-| `just ci-audit`  | `jankurai / audit`                          | 15–25 min       |
-| `just ci-release`| `release / audit-gate`                      | 20–35 min       |
-| `just ci-release-build` | `release / build`                  | 15–30 min       |
-| `just ci-release-publish` | `release / publish`              | 5–10 min        |
-| `just ci-shadow` | Jeryu main shadow deploy            | < 1 min         |
-| `just ci`        | quick + coverage + audit                    | 25–40 min       |
-
-All recipes call `scripts/ci-local.sh` so the exact step sequence stays in
-one place. The script halts on the first failing step (`set -euo pipefail`).
-
-## First-time setup
-
-```bash
-just ci-doctor          # report missing tools with install hints
-```
-
-Typical installs the doctor will ask for:
-
-```bash
-rustup component add rustfmt clippy llvm-tools-preview
-cargo install cargo-llvm-cov --locked
-cargo install cargo-mutants --locked
-cargo install cargo-audit --locked
-brew install gitleaks syft just gh jq ripgrep
-brew install --cask mactex            # macOS paper build (linux: texlive)
-npm ci                                # workspace dev deps
-npx playwright install chromium
-cargo install --path crates/jankurai --locked
-```
+| Command | Runs | Network |
+| --- | --- | --- |
+| `bash scripts/ci-local.sh pr-ci` | exactly what the forge runs: `ops/ci/check.sh` plus the evidence bundle | grype DB |
+| `just check` / `just verify` | `ops/ci/check.sh`: required lane, gitleaks, syft SBOM, grype, ratchet audit against protected main | grype DB |
+| `just fast` / `just test` | the required lane, then an advisory `jankurai audit` | none |
+| `bash scripts/ci-local.sh required` | the required lane only | none |
+| `just security` | `tools/security-lane.sh`: gitleaks, action lint, script digests | none |
+| `just setup` | `scripts/ci-doctor.sh` and the pinned security tools | downloads |
 
 ## What each lane runs
 
-### `just ci-quick`
-The test-matrix job:
+### Required lane (`ops/ci/required.sh`)
 
-1. `cargo fmt --all -- --check`
-2. `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`
-3. `cargo test --workspace --exclude tuiwright --all-targets --all-features --locked`
-4. `cargo test -p tuiwright --all-targets --locked -- --test-threads=1` — PTY smoke tests run serially to avoid local terminal race flakes.
-5. `bash scripts/render-test-surface.sh --check` — README chart is in sync
+1. `scripts/ci-local-lanes-test.sh`: the family lane contract of
+   `scripts/ci-local.sh`.
+2. `scripts/forge-gate-test.sh`: the forge gate contract above, and no
+   committed `.github/workflows`.
+3. `bash -n` and `shellcheck -S warning` over `scripts/*.sh`, `ops/ci/*.sh` and
+   `jankurai-installer.sh`.
+4. `scripts/lint-actions.sh`: `zizmor --offline action.yml`, the composite
+   action downstream workflows run (and actionlint + zizmor over
+   `.github/workflows` if that directory ever exists).
+5. The vendored-installer check with its mandatory hub comparison and its
+   negative test, and the offline installer self-test. The hub comparison
+   reads the hub `root/jankurai`: the sibling `../jankurai` when it holds the
+   locked commits on `origin/main`, otherwise a fresh clone next to this
+   checkout's origin. It fails when the hub cannot be read.
 
-### `just ci-coverage`
-The coverage job. Needs `cargo-llvm-cov` and `cargo-mutants` installed.
+Needs `shellcheck`, `zizmor`, `git` and `openssl` on PATH and read access to
+the hub (network unless the sibling is present); a few seconds.
 
-```bash
-cargo llvm-cov --workspace --all-features --locked --lcov --output-path target/coverage/lcov.info
-cargo llvm-cov report --json --output-path target/coverage/coverage.json
-cargo llvm-cov report --summary-only
-cargo mutants --in-diff target/jankurai/coverage/mutation.diff --output target/mutants --workspace --all-features
-```
+### Full gate (`ops/ci/check.sh`)
 
-The script also copies LCOV to the paths consumed by `jankurai coverage audit`:
+1. The required lane.
+2. `gitleaks detect --source .` over the full history.
+3. `syft dir:.` writes a CycloneDX SBOM to
+   `target/jankurai/security/sbom.json`; `grype` scans it with
+   `--fail-on high`.
+4. `ops/ci/prepare-baseline.sh` scores protected `origin/main` with the same
+   auditor binary, and `jankurai audit --mode ratchet` fails the head if it
+   scores below main.
 
-- `target/llvm-cov/lcov.info`
-- `target/jankurai/coverage/rust-lcov.info`
+The auditor is `JANKURAI` (an explicit path) or `jankurai` on PATH; the forge
+gate hosts provide the governed build. Its version and SHA-256 are written to
+`target/jankurai/auditor.txt`.
 
-Mutation evidence is written in the current cargo-mutants layout:
+### Main shadow deploy (`ops/ci/post-main-shadow.sh`)
 
-- `target/mutants/mutants.out/outcomes.json`
-- `target/jankurai/coverage/mutation.diff`
-- `target/jankurai/coverage/mutants-list.json`
-
-When the git diff has no Rust mutants, the lane writes an empty outcomes file
-instead of leaving the mutation source missing. A survivor still fails the lane.
-
-### `just ci-audit`
-The full audit job:
-
-1. `npm ci` and `npx playwright install chromium`
-2. Quality gates (fmt, clippy, workspace tests, ux-qa build/test)
-3. `cargo install --path crates/jankurai --locked --force`
-4. `jankurai proofbind verify` + `jankurai proofmark rust`
-5. `jankurai rust witness build`
-6. `jankurai security run --strict --profile ci`
-7. UX QA smoke server + `jankurai ux audit`
-8. `jankurai coverage audit`
-9. `cargo test -p jankurai --test language_bad_behavior`
-10. `cargo test -p jankurai --test migration_prompt_verify --test migration_slice_risk`
-11. `jankurai audit . --mode ratchet --baseline agent/baselines/main.repo-score.json`
-
-### `just ci-release`
-The release audit gate. It regenerates Rust LCOV and cargo-mutants
-evidence before the ratchet audit, so tag releases do not depend on stale local
-`target/` files or PR artifacts. Optionally set `LOCAL_RELEASE_TAG=v1.0.0` to
-also assert `VERSION` matches the tag.
-
-### `just ci-release-build`
-The release build. It expects `LOCAL_RELEASE_TAG=vX.Y.Z` and will
-produce either a signed Linux tarball or a notarized macOS `.pkg` for the
-current host target, plus sha256 and Sigstore bundle sidecars.
-
-### `just ci-release-publish`
-The release publish step. It expects `LOCAL_RELEASE_TAG=vX.Y.Z` and
-`GH_TOKEN` so it can stage the release notes, installer script, and Homebrew
-formula metadata before publishing the immutable tag.
-
-### `just ci-shadow`
 The Jeryu main-branch shadow deploy. It expects `JERYU_FORGE_ORIGIN` to name the
 forge origin URL this checkout must already use for `origin`, and uses the local
 `.jeryu/local/repos/jankurai.toml` sidecar to mirror `main` to GitHub after the
 Jeryu pipeline has passed. The lane refuses to run, with a receipt, when
 `JERYU_FORGE_ORIGIN` is unset or `origin` points somewhere else.
 
-### `just fast` / `just test`
-The required lane (`bash scripts/ci-local.sh required`): `bash -n` plus
-`shellcheck -S warning` over `scripts/*.sh`, `ops/ci/*.sh` and
-`jankurai-installer.sh`, the vendored-installer check with its mandatory hub
-comparison and its negative test, and the offline installer self-test. The hub
-comparison reads the hub `root/jankurai`: the sibling `../jankurai` when it
-holds the locked commits on `origin/main`, otherwise a fresh clone next to this
-checkout's origin. It fails when the hub cannot be read. Needs `shellcheck`,
-`git` and `openssl` on PATH and read access to the hub (network unless the
-sibling is present); a few seconds.
+## First-time setup
+
+```bash
+just setup                                  # ci-doctor + pinned security tools
+bash ops/ci/install-security-tools.sh       # gitleaks, actionlint, syft, grype (Linux x86_64)
+```
 
 ## Editing the lane
 
-`scripts/ci-local.sh` is the source of truth. When a CI workflow step
-changes, mirror the change in the same script so `just ci` stays accurate.
-The pre-commit hook does not yet run `just ci` (too slow); use it manually
-before opening or updating a pull request.
+`scripts/ci-local.sh` and the `ops/ci/*.sh` scripts are the source of truth.
+Change the script, not a copy of its steps, and keep
+`scripts/forge-gate-test.sh` in step with any change to what the forge gate
+runs.

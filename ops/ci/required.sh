@@ -9,6 +9,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 echo "[ci] required lane: ci-local lane contract"
 bash scripts/ci-local-lanes-test.sh
 
+echo "[ci] required lane: forge gate contract"
+bash scripts/forge-gate-test.sh
+
 shell_files=(scripts/*.sh ops/ci/*.sh jankurai-installer.sh)
 
 for script in "${shell_files[@]}"; do bash -n "$script"; done
@@ -18,6 +21,8 @@ for script in "${shell_files[@]}"; do bash -n "$script"; done
 command -v shellcheck >/dev/null ||
   { echo "required: shellcheck is not installed (apt-get install shellcheck, brew install shellcheck)" >&2; exit 1; }
 shellcheck -S warning "${shell_files[@]}"
+
+bash scripts/lint-actions.sh
 
 # The vendored-trust check compares the installer and release keys with the hub's
 # bytes (scripts/hub-source.sh finds the hub). That comparison is mandatory here:

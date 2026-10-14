@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Quality gates lane: fmt, clippy, workspace tests, README test-surface.
-# Used by both jankurai.yml#test-matrix and `just ci-quick`.
+# Hub-era lane kept for `just fmt`; this repository has no Cargo workspace.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 ensure_fuse_dev

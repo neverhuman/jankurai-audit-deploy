@@ -12,9 +12,11 @@ the smallest lane that proves the change.
 | `audit` | jankurai repo score and hard-rule findings |
 | `full` | the full release/merge gate |
 
-The local runner `scripts/ci-local.sh` and forge CI on our own hosts
-call the exact same `ops/ci/*.sh` entrypoints, so a green local run predicts a
-green CI run. See [`docs/ci-local.md`](ci-local.md) for the per-lane contract.
+The forge gate runs `ops/ci/pr-ci.sh` (the `required` lane in
+`.jeryu/ci.toml`), which runs `ops/ci/check.sh`. `bash scripts/ci-local.sh pr-ci`
+runs exactly that command locally, so a green local `pr-ci` predicts a green
+forge gate; the narrower `required` lane alone does not. See
+[`docs/ci-local.md`](ci-local.md) for the per-lane contract.
 
 ## The required lane
 
@@ -90,8 +92,8 @@ When a lane fails, keep the next agent on the shortest possible rerun path.
 Paid or unbounded work in this repo (release builds, signing, publishing,
 mirroring) needs an explicit ceiling before it starts.
 
-- **Budget**: every CI job sets a `timeout-minutes` cap in its workflow, and the
-  release lanes run only on immutable tags, never in a retry loop.
+- **Budget**: the forge gate runs one bounded lane per head under the gate
+  host's own timeout, and nothing in this repository runs in a retry loop.
 - **Quota**: signing and publishing run once per tag; the tag-mirror config in
   `.jeryu/repo.toml` bounds mirroring to `jankurai-deploy-v*` tags only.
 - **Stop condition / kill switch**: `set -euo pipefail` plus `lib.sh#fail` halt

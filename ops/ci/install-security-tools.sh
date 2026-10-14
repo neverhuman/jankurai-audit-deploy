@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Install pinned upstream Linux tools after verifying their published checksums.
+# Install pinned upstream Linux tools after verifying their published checksums:
+# the gitleaks, syft and grype the forge gate (ops/ci/check.sh) runs, and the
+# actionlint scripts/lint-actions.sh needs if a workflow directory appears.
 set -euo pipefail
 [[ "$(uname -s)/$(uname -m)" == Linux/x86_64 ]]
 install_root="${CARGO_HOME:-$HOME/.cargo}/bin"
@@ -19,4 +21,6 @@ install_release() {
   "$install_root/$binary" --version
 }
 install_release gitleaks/gitleaks 8.21.2 gitleaks x64
+install_release rhysd/actionlint 1.7.8 actionlint amd64
+install_release anchore/syft 1.40.0 syft amd64
 install_release anchore/grype 0.99.0 grype amd64

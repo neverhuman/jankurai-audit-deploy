@@ -7,6 +7,9 @@ mkdir -p target
 echo "[security] secret scan: gitleaks detect"
 gitleaks detect --source . --no-banner --redact
 
+echo "[security] GitHub Actions surface lint: scripts/lint-actions.sh"
+bash scripts/lint-actions.sh
+
 if [ -f Cargo.toml ]; then
   echo "[security] cargo audit"
   cargo audit

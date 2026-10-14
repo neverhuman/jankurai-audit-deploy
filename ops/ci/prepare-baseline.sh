@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Score the protected default-branch source using the same auditor as the candidate.
+# Score the protected default-branch source using the same auditor as the candidate
+# (JANKURAI when ops/ci/check.sh sets it, otherwise jankurai from PATH).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 repo_root="$PWD"
@@ -9,6 +10,6 @@ trap 'rm -rf "$baseline_root"' EXIT
 base="$(git rev-parse refs/remotes/origin/main)"
 git clone --no-hardlinks --no-checkout "$repo_root" "$baseline_root/repo"
 git -C "$baseline_root/repo" checkout --detach "$base"
-jankurai audit "$baseline_root/repo" --mode advisory --no-score-history \
+"${JANKURAI:-jankurai}" audit "$baseline_root/repo" --mode advisory --no-score-history \
   --json "$repo_root/target/jankurai/accepted-baseline.json" \
   --md "$repo_root/target/jankurai/accepted-baseline.md"

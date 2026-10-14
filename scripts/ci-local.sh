@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Local entry point for the CI lanes. Delegates to the exact same
-# ops/ci/<lane>.sh scripts the release workflows calls, so local runs
-# never drift from CI.
+# ops/ci/<lane>.sh scripts forge CI runs (`pr-ci` is the forge's required
+# lane), so local runs never drift from CI.
 #
 # Every repository of the split family accepts the same lane names:
 #   required  fast  security  audit  gates  (all is an alias of gates)
@@ -24,6 +24,7 @@ declare -A lane_script=(
   [all]="ops/ci/quality-gates.sh"
   [quality-gates]="ops/ci/quality-gates.sh"
   [tool-adoption]="ops/ci/tool-adoption.sh"
+  [pr-ci]="ops/ci/pr-ci.sh"
 )
 
 lanes() { printf '%s\n' "${!lane_script[@]}" | sort; }

@@ -1,6 +1,13 @@
 # CI provider declaration. The forge configures its checks forge-side,
 # so there is no committed workflow file to read; this names the lanes it
 # runs. Credit comes from the lane's real content, never from this file.
+#
+# The forge gate runs one command per head: `just required` when the Justfile
+# has that recipe, otherwise ops/ci/pr-ci.sh. This repository has no
+# `just required`, so the gate runs ops/ci/pr-ci.sh: ops/ci/check.sh (required
+# lane, gitleaks, syft SBOM, grype, ratchet audit) plus the evidence bundle.
+# scripts/forge-gate-test.sh keeps this file, those scripts and the Justfile
+# in agreement.
 schema_version = "2"
 provider = "jeryu"
 

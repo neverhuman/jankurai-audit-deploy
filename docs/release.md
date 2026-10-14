@@ -20,63 +20,64 @@ The `Unreleased` section is promoted to a dated version heading at tag time.
 
 ## Release automation
 
-Releases are cut by CI, not by hand:
+A release of this repository is an immutable tag on a commit that passed the
+forge gate. This repository builds and signs no binaries: release binaries are
+built on our build hosts and signed with a release key we hold by the hub
+(`root/jankurai`, `ops/release/`; v1.7.2 was the first key-signed release), and
+the vendored installer here (`jankurai-installer.sh`, synced from the hub by
+`scripts/sync-hub-installer.sh`) verifies them against the pinned public key.
 
 1. Bump [`VERSION`](../VERSION) and promote the `Unreleased` section of
    [`CHANGELOG.md`](../CHANGELOG.md).
-2. Run the full local gate: `just check` (fast lane, security scanning, the
-   release audit gate, and the jankurai self-audit).
-3. Push the version commit. Forge CI on our own hosts runs the build,
-   security, and jankurai audit lanes and keeps the `repo-score` artifacts.
-4. Tag the release commit with `jankurai-deploy-v<version>-split.<N>`. Releases
-   are built and signed on our own servers. A separate change introduces
-   key-based release signing; the existing `ops/ci/release-*.sh` scripts are not
-   invoked by any workflow in the meantime.
-5. The tag mirror in [`.jeryu/repo.toml`](../.jeryu/repo.toml) publishes the
-   immutable tag to the public GitHub mirror.
+2. Run the full gate locally: `bash scripts/ci-local.sh pr-ci` (the exact
+   command the forge runs) or `just check`.
+3. Open a pull request with the version commit. The forge gate runs the
+   `required` lane declared in [`.jeryu/ci.toml`](../.jeryu/ci.toml),
+   [`ops/ci/pr-ci.sh`](../ops/ci/pr-ci.sh) (see [ci-local.md](ci-local.md)).
+4. After the merge, tag the release commit with
+   `jankurai-deploy-v<version>-split.<N>`. The tag mirror in
+   [`.jeryu/repo.toml`](../.jeryu/repo.toml) publishes the immutable tag to the
+   public GitHub mirror.
 
-Release builds depend on immutable tags, never branches.
+The GitHub-OIDC release scripts (`ops/ci/release-build.sh`,
+`release-sign-blob.sh`, `release-macos-sign.sh`, `release-publish.sh`) and the
+`ci-<sha>` tag publisher were deleted with the workflows, as they were in the
+hub. Release builds depend on immutable tags, never branches.
 
 ## Integrity, provenance, and SBOM
 
-- **Release gate**: `ops/ci/release-audit-gate.sh` runs the ratchet jankurai
-  audit (`just release`) before any tag is cut, so a release cannot ship below
-  the score floor.
-- **Signing**: release artifacts are signed by `ops/ci/release-sign-blob.sh`
-  (Sigstore blob signing, which relied on GitHub Actions OIDC and is replaced by
-  key-based signing in a separate change) and, on macOS, notarized by
-  `ops/ci/release-macos-sign.sh`. Each artifact ships with a `sha256` sidecar.
-- **SBOM**: a CycloneDX/SPDX software bill of materials is generated from the
-  locked dependency graph during the security job and attached to the release as
-  `sbom.spdx.json`.
-- **Provenance**: the security job runs `gitleaks` for secret scanning and
-  `cargo audit` for advisory checks; the audit job publishes the `repo-score`
-  artifacts that prove the release passed the jankurai gate.
-- **GitHub**: GitHub is a publishing mirror only. It runs no workflows; builds,
-  CI, scoring, and release signing happen on our own servers.
+- **Gate**: the forge `required` lane runs `ops/ci/check.sh`, whose ratchet
+  audit fails a head that scores below protected main under the same auditor.
+- **Signing**: done by the hub with the held release key; see the hub's
+  `docs/release.md`. Nothing in this repository signs.
+- **SBOM**: `ops/ci/check.sh` writes a CycloneDX SBOM with `syft` to
+  `target/jankurai/security/sbom.json` and scans it with `grype --fail-on high`.
+- **Provenance**: `gitleaks` scans the full history for secrets on every gate
+  run, and the evidence bundle under `target/jankurai/evidence/<commit>/` keeps
+  the SBOM, the audit reports and the auditor's version and SHA-256 with a
+  `MANIFEST.sha256` and a `receipt.json` naming the commit, tree and result.
+- **Actions surface**: no workflow is committed (GitHub is a publishing
+  mirror). `action.yml`, the composite action downstream workflows run, is
+  linted by `zizmor` on every required run, and its third-party `uses:` is
+  pinned to a commit SHA.
 
 ## Launch gates
 
 A release is only allowed to ship when every launch gate below is backed by a
-real artifact or command. These gates prove backups, monitoring, security, and
-rollback for the release surface:
+real artifact or command:
 
-- **Security**: `just security` runs gitleaks (secret scanning) and cargo audit
-  (dependency scanning); the security CI job emits
-  `target/jankurai/security/evidence.json` and the SBOM before the audit gate.
-- **Backups**: release artifacts and their signed `sha256` sidecars are durable,
-  immutable, and re-fetchable from each tag; the Jeryu forge keeps
-  an authoritative copy of every mirrored commit and tag, so a lost GitHub
-  mirror is restored from the forge.
-- **Monitoring**: the `repo-score` artifacts, the `summary.md` step summary, and
-  the publish receipts written under `target/jankurai/` give a post-release
-  monitoring trail; a regression shows up as a score drop on the next audit.
+- **Security**: the forge gate runs gitleaks, the syft SBOM and grype, and the
+  required lane lints `action.yml`; `just security` runs the secret scan and
+  action lint locally.
+- **Backups**: the Jeryu forge keeps an authoritative copy of every mirrored
+  commit and tag, so a lost GitHub mirror is restored from the forge.
+- **Monitoring**: the evidence bundle and `.jankurai/repo-score.{json,md}` from
+  each gate run give a trail; a regression shows up as a failed ratchet.
 - **Rollback**: documented below; tags are immutable, so any prior release is
-  re-fetchable and re-verifiable bit-for-bit.
-- **Abuse controls**: publishing and signing run once per immutable tag with
-  least-privilege CI permissions (`contents: read`), pinned action SHAs, and a
-  clean-worktree precondition on the shadow lane, which bounds abuse of the
-  release path.
+  re-fetchable.
+- **Abuse controls**: no CI credential lives on GitHub; the mirror only
+  receives pushes from the forge, and the shadow lane refuses to run from a
+  checkout whose `origin` is not the forge.
 
 ## Rollback
 
@@ -90,6 +91,5 @@ If a release regresses:
 4. Re-run `just check` to confirm the rolled-back tree is green before
    re-publishing.
 
-Because tags are immutable and the release artifacts carry signed `sha256`
-sidecars and an SBOM, any prior release can be re-fetched and verified
-bit-for-bit from its tag.
+Because tags are immutable, any prior release can be re-fetched from its tag,
+and the hub's signed release assets verify bit-for-bit against the pinned key.
