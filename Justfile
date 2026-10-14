@@ -27,7 +27,7 @@ bootstrap: setup
 # Uses the cached, target-only build path so reruns stay fast.
 fast:
     bash scripts/ci-local.sh required
-    jankurai audit . --no-score-history --json target/jankurai/repo-score.json --md target/jankurai/repo-score.md
+    bash ops/ci/self-audit.sh target/jankurai/repo-score.json target/jankurai/repo-score.md
 
 # Narrow per-package build of the released auditor crate against the locked
 # dependency graph; the cached release pipeline reuses this target output.
@@ -61,8 +61,7 @@ security:
 # Jankurai self-audit lane: writes the repo-score artifacts the forge gate bundles.
 # Mirrors the jankurai audit + repo-score control plane in ops/ci/audit.sh.
 audit:
-    mkdir -p .jankurai
-    jankurai audit . --no-score-history --json .jankurai/repo-score.json --md .jankurai/repo-score.md
+    bash ops/ci/self-audit.sh .jankurai/repo-score.json .jankurai/repo-score.md
 
 # Release audit gate: the artifact-backed launch gate run before tagging.
 release:

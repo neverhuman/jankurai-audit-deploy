@@ -60,8 +60,9 @@ hub. Release builds depend on immutable tags, never branches.
   repository has no package manifests, so the SBOM is empty and no
   vulnerability scan runs on it.
 - **Auditor identity**: the gate scores only with the governed jankurai
-  install whose SHA-256 matches the host's authority stamp (see
-  [ci-local.md](ci-local.md)).
+  install whose SHA-256 matches the host's authority stamp, through a private
+  copy re-verified before each audit (see [ci-local.md](ci-local.md)). This
+  narrows, but cannot close, tampering by code running as the gate's own user.
 - **Run evidence (not provenance)**: `gitleaks` scans the full history for
   secrets on every gate run. Each run leaves a local bundle in the gate
   workspace under `target/jankurai/evidence/<commit>/` (SBOM, audit reports,

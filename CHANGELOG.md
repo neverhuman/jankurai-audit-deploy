@@ -17,6 +17,14 @@ The authoritative version string lives in [`VERSION`](VERSION).
   `ops/ci/release-build.sh`, `release-sign-blob.sh`, `release-macos-sign.sh` and
   `release-publish.sh`. The hub builds release binaries and signs them with the
   held release key, as it has since v1.7.2.
+- The pinned-source auditor build and the upstream adversarial test run that
+  `ops/ci/github-setup.sh` did: it cloned jankurai-core at
+  `8505079e47597225e1f2bf65f57d41b0d050bfe7`, built the auditor from that
+  source, and ran core's `language_bad_behavior` test. The scorer is now the
+  host-governed binary verified against the host's authority stamp (the family
+  keeps one auditor pin of record, on that install, rather than one per
+  consumer repo), and `language_bad_behavior` runs in core's own gate
+  (`ops/ci/tool-adoption.sh` there), where the code it tests lives.
 
 ## [1.7.5] - 2026-10-14
 
@@ -150,10 +158,19 @@ release. This section covers everything on `main` since `1.7.0-split.0`.
   whose SHA-256 matches `binary_sha256` in the host's authority stamp, with
   both files owned by the running user and not group/world-writable. It is
   never taken from PATH and there is no in-repo version pin. `JANKURAI=` is a
-  local override recorded as unverified, and `pr-ci.sh` refuses it.
+  local override recorded as unverified, and `pr-ci.sh` refuses it. The check
+  lives in `ops/ci/auditor.sh`: the verified binary is copied into a private
+  mode-700 directory under `target/`, only the copy runs, and its digest is
+  re-checked immediately before each audit (baseline and head).
+  `prepare-baseline.sh` has no PATH fallback, and `just fast` / `just audit`
+  use `ops/ci/self-audit.sh` instead of a bare `jankurai`. Same-user code can
+  still tamper; a shell lane cannot enforce that boundary. The check works with
+  GNU or BSD `stat` and fails with "unsupported platform" otherwise.
 - `scripts/forge-gate-test.sh`, run by the required lane, is a tripwire: it
   pins the lane declaration and the steps of `pr-ci.sh` and `check.sh`,
-  exercises the auditor identity check against a fake host install, rejects a
+  exercises the auditor identity check, use-time re-verification and the
+  baseline fail-closed path against a fake host install, checks every script
+  the lane executes for `|| true`, `|| :`, `|| exit 0` and `set +e`, rejects a
   `just required` recipe that would shadow `pr-ci.sh` on the forge, and rejects
   any committed `.github/workflows`.
 - `scripts/lint-actions.sh`, run by the required lane and `just security`, lints

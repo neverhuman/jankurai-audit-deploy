@@ -16,6 +16,10 @@
 #     authority stamp: check.sh fails closed on a missing stamp, a digest
 #     mismatch or a group/world-writable stamp, and pr-ci.sh refuses a
 #     JANKURAI override (exercised below, not only grepped);
+#   - the verified binary is used only through a private copy that is
+#     re-verified immediately before each audit, and prepare-baseline.sh has
+#     no PATH fallback (both exercised and pinned);
+#   - no script the lane executes masks a failure (pattern match);
 #   - the required lane lints action.yml, and no GitHub workflow is committed
 #     (GitHub is a publishing mirror).
 set -euo pipefail
@@ -55,11 +59,40 @@ check "check.sh records the SBOM component count" \
 check "check.sh scores protected main as the baseline" has_line '^bash ops/ci/prepare-baseline\.sh$' ops/ci/check.sh
 check "check.sh runs the ratchet audit against it" \
   has_line 'audit \. --mode ratchet --baseline target/jankurai/accepted-baseline\.json' ops/ci/check.sh
-check "no gate step is masked with || true or || :" \
-  bash -c "! grep -nE '\|\|[[:space:]]*(true|:)([[:space:]]|$)' ops/ci/check.sh ops/ci/required.sh ops/ci/pr-ci.sh"
+# Every script the lane executes. A pattern match, not a proof: it catches
+# `|| true`, `||true`, `|| true;`, `|| :`, `|| exit 0` and `set +e` outside
+# comments.
+lane_scripts=(ops/ci/pr-ci.sh ops/ci/check.sh ops/ci/auditor.sh ops/ci/required.sh
+  ops/ci/prepare-baseline.sh ops/ci/collect-evidence.sh scripts/ci-local-lanes-test.sh
+  scripts/lint-actions.sh scripts/check-vendored-installer.sh scripts/installer-selftest.sh)
+masked() {
+  grep -v -E '^[[:space:]]*#' "$@" |
+    grep -qE '\|\|[[:space:]]*(true|:|exit[[:space:]]+0)([[:space:];)]|$)|(^|[[:space:];])set[[:space:]]+\+e'
+}
+not_masked() { ! masked "$1"; }
+for script in "${lane_scripts[@]}"; do
+  check "no step masked in $script (|| true, || :, || exit 0, set +e)" not_masked "$script"
+done
 
-check "check.sh never takes the auditor from PATH" \
-  bash -c "! grep -v -E '^[[:space:]]*#' ops/ci/check.sh | grep -qE 'command -v jankurai|type -P jankurai'"
+auditor_users=(ops/ci/check.sh ops/ci/prepare-baseline.sh ops/ci/auditor.sh ops/ci/self-audit.sh)
+no_path_auditor() {
+  ! grep -v -E '^[[:space:]]*#' "${auditor_users[@]}" Justfile |
+    grep -qE 'command -v jankurai|type -P jankurai|(^|[[:space:]])jankurai audit|JANKURAI:-[^}]'
+}
+check "no lane script or just recipe takes the auditor from PATH" no_path_auditor
+# Every audit invocation runs the verified private copy and is immediately
+# preceded by reverify_auditor (no line in between).
+reverified() {
+  awk '/"\$JANKURAI" audit/ { if (prev != "reverify_auditor") bad = 1; n++ }
+       { if ($0 !~ /^[[:space:]]*$/) { p = $0; sub(/^[[:space:]]+/, "", p); prev = p } }
+       END { exit (bad || n == 0) }' "$1"
+}
+check "check.sh re-verifies the auditor copy immediately before the head audit" reverified ops/ci/check.sh
+check "prepare-baseline.sh re-verifies the auditor copy immediately before the baseline audit" \
+  reverified ops/ci/prepare-baseline.sh
+check "check.sh resolves the auditor through ops/ci/auditor.sh" has_line '^resolve_auditor$' ops/ci/check.sh
+check "auditor.sh copies the verified binary into a private mode-700 dir under target/" \
+  bash -c "grep -qF 'mktemp -d target/auditor.XXXXXX' ops/ci/auditor.sh && grep -qF 'chmod 700 \"\$auditor_dir\"' ops/ci/auditor.sh"
 check "pr-ci.sh runs check.sh with the governed auditor only" \
   has_line '^JANKURAI_REQUIRE_GOVERNED=1 bash ops/ci/check\.sh$' ops/ci/pr-ci.sh
 
@@ -71,13 +104,16 @@ trap 'rm -rf "$fake_home"' EXIT
 mkdir -p "$fake_home/.jeryu/bin" "$fake_home/.jeryu/authority"
 printf '#!/bin/sh\necho "jankurai 0.0.0-fake"\n' > "$fake_home/.jeryu/bin/jankurai"
 chmod 0700 "$fake_home/.jeryu/bin/jankurai"
-fake_sha="$(sha256sum "$fake_home/.jeryu/bin/jankurai" | cut -d' ' -f1)"
+# shellcheck source=ops/ci/auditor.sh
+source ops/ci/auditor.sh
+fake_sha="$(file_sha256 "$fake_home/.jeryu/bin/jankurai")"
+with_timeout() { if command -v timeout >/dev/null 2>&1; then timeout 30 "$@"; else "$@"; fi; }
 stamp="$fake_home/.jeryu/authority/jankurai.json"
 write_stamp() { printf '{"schema":"jeryu.jankurai-authority-stamp/v1","binary_sha256":"%s","version":"jankurai 0.0.0-fake"}\n' "$1" > "$stamp"; chmod 0600 "$stamp"; }
 refuses() {
   local name="$1" want="$2"; shift 2
   local out status=0
-  out="$(env -u JANKURAI HOME="$PWD/$fake_home" "$@" timeout 30 bash ops/ci/check.sh --identity-only 2>&1)" || status=$?
+  out="$(env -u JANKURAI HOME="$PWD/$fake_home" "$@" bash -c "$(declare -f with_timeout); with_timeout bash ops/ci/check.sh --identity-only" 2>&1)" || status=$?
   if [[ "$status" -ne 0 ]] && grep -qF -- "$want" <<<"$out"; then
     ok "auditor check refuses: $name"
   else
@@ -94,10 +130,29 @@ refuses "world-writable governed binary" "group/world-writable"
 chmod 0700 "$fake_home/.jeryu/bin/jankurai"
 refuses "JANKURAI override under pr-ci" "override refused" \
   JANKURAI="$PWD/$fake_home/.jeryu/bin/jankurai" JANKURAI_REQUIRE_GOVERNED=1
-accept_out="$(env -u JANKURAI HOME="$PWD/$fake_home" timeout 30 bash ops/ci/check.sh --identity-only 2>&1)" &&
+accept_out="$(env -u JANKURAI HOME="$PWD/$fake_home" bash -c "$(declare -f with_timeout); with_timeout bash ops/ci/check.sh --identity-only" 2>&1)" &&
   grep -qF 'auditor identity ok: governed' <<<"$accept_out" &&
   ok "auditor check accepts a stamped, private governed install" ||
   bad "auditor check rejected a stamped, private governed install: $accept_out"
+
+# Use-time re-verification: a copy that changed after verification is refused.
+cp "$fake_home/.jeryu/bin/jankurai" "$fake_home/copy"
+printf 'tampered\n' >> "$fake_home/copy"
+tamper_out="$(JANKURAI="$PWD/$fake_home/copy" JANKURAI_SHA256="$fake_sha" \
+  bash -c 'source ops/ci/auditor.sh; reverify_auditor' 2>&1)" &&
+  bad "reverify_auditor accepted a copy that changed after verification" ||
+  { grep -qF 'changed after verification' <<<"$tamper_out" &&
+    ok "reverify_auditor refuses a copy that changed after verification" ||
+    bad "reverify_auditor failed for the wrong reason: $tamper_out"; }
+# prepare-baseline.sh has no PATH fallback: without the verified auditor it
+# fails closed before scoring anything.
+pb_status=0
+pb_out="$(env -u JANKURAI -u JANKURAI_SHA256 bash ops/ci/prepare-baseline.sh 2>&1)" || pb_status=$?
+if [[ "$pb_status" -ne 0 ]] && grep -qF 'JANKURAI/JANKURAI_SHA256 unset' <<<"$pb_out"; then
+  ok "prepare-baseline.sh fails closed without the verified auditor"
+else
+  bad "prepare-baseline.sh did not fail closed without the verified auditor (exit $pb_status)"
+fi
 
 check "required lane lints action.yml" has_line '^bash scripts/lint-actions\.sh$' ops/ci/required.sh
 check "no GitHub workflow is committed (GitHub is a publishing mirror)" \

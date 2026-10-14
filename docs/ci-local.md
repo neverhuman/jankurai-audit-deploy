@@ -28,7 +28,7 @@ and is not release provenance.
 | --- | --- | --- |
 | `bash scripts/ci-local.sh pr-ci` | exactly what the forge runs: `ops/ci/check.sh` (governed auditor only) plus the evidence bundle | none |
 | `just check` / `just verify` | `ops/ci/check.sh`: required lane, gitleaks, syft SBOM, ratchet audit against protected main | none |
-| `just fast` / `just test` | the required lane, then an advisory `jankurai audit` | none |
+| `just fast` / `just test` | the required lane, then an advisory audit with the verified auditor (`ops/ci/self-audit.sh`) | none |
 | `bash scripts/ci-local.sh required` | the required lane only | none |
 | `just security` | `tools/security-lane.sh`: gitleaks, action lint, script digests | none |
 | `just setup` | `scripts/ci-doctor.sh` and the pinned security tools | downloads |
@@ -78,6 +78,19 @@ user and not group- or world-writable; otherwise it fails closed. For a local
 run, `JANKURAI=/path just check` uses another binary and records it in
 `target/jankurai/auditor.txt` as an "unverified local override";
 `ops/ci/pr-ci.sh` refuses the override.
+
+The verified binary is copied into a fresh private directory (mode 700) under
+`target/`, and only the copy runs; its SHA-256 is re-checked immediately before
+each audit (protected-main baseline and head). `ops/ci/prepare-baseline.sh`
+fails closed when the verified auditor is not exported (no PATH fallback), and
+`just fast` / `just audit` go through `ops/ci/self-audit.sh`, which uses the same
+check. The residual risk is stated in `ops/ci/auditor.sh`: code running as the
+same user, including the pull request's own shell, can still tamper with the
+copy or the stamp. A shell lane inside the repository it gates cannot enforce a
+boundary against its own user (nor could the lane before this change); the
+check narrows the window and records what scored, it does not prove it.
+The identity check needs GNU or BSD `stat` and `sha256sum` or `shasum`, and
+fails with an explicit "unsupported platform" message otherwise.
 
 ### Main shadow deploy (`ops/ci/post-main-shadow.sh`)
 

@@ -54,7 +54,7 @@ jq -n \
   --arg tree "$tree" \
   --argjson gate_exit "$gate_exit" \
   --argjson missing "$(printf '%s\n' "${missing[@]+"${missing[@]}"}" | jq -R 'select(length > 0)' | jq -s .)" \
-  --arg sbom_components "$(cat target/jankurai/security/sbom-components.txt 2>/dev/null || true)" \
+  --arg sbom_components "$(if [[ -f target/jankurai/security/sbom-components.txt ]]; then cat target/jankurai/security/sbom-components.txt; fi)" \
   --arg manifest_sha256 "$(sha256sum "$out/MANIFEST.sha256" | cut -d' ' -f1)" \
   '{schema: "jankurai-deploy/gate-evidence/v1", commit: $commit, tree: $tree,
     gate_exit: $gate_exit, gate_passed: ($gate_exit == 0),
