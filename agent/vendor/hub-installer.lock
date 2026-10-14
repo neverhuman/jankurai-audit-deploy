@@ -10,15 +10,15 @@ path = "jankurai-installer.sh"
 source_repo = "root/jankurai"
 source_path = "jankurai-installer.sh"
 # Hub commit that last changed the installer.
-source_commit = "1d4f2c795b76521059bdf2e9b048b21704badcd5"
-sha256 = "ef514934bf616649f70269f21a044012b94330c058628d7950ce8a75d9d0d27c"
+source_commit = "b4ce1a321fe9b0cd8c1000295e3558bd890e3f2e"
+sha256 = "828e513628080823a9afaa19eeaeee4ce2e54174483a11cdde00073dbafb895f"
 # Release from the hub family.lock. The installer's own default tag (hub bytes)
 # tracks this.
-family_release = "1.7.4"
+family_release = "1.7.5"
 # Newest release actually published. The action.yml release-tag default and the
 # docs/install.md command track this, so @main never points at a tag that does not
 # exist yet. It moves to family_release once the hub has published that release.
-published_release = "1.7.3"
+published_release = "1.7.4"
 
 # The release-signing public key the installer pins (release_keys table). The
 # key file is vendored byte-for-byte from the hub's release-keys/ directory,

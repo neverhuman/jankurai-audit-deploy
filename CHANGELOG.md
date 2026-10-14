@@ -7,6 +7,25 @@ The authoritative version string lives in [`VERSION`](VERSION).
 
 ## [Unreleased]
 
+## [1.7.5] - 2026-10-14
+
+`VERSION` is `1.7.5-split.0`, the member version shipped in the 1.7.5 family
+release.
+
+### Changed
+
+- `jankurai-installer.sh` is re-synced from the hub's 1.7.5 installer (hub
+  `b4ce1a3`), whose only change is the default tag `v1.7.5`;
+  `agent/vendor/hub-installer.lock` records its SHA-256, source commit and
+  `family_release = "1.7.5"`. The release key and the `release_keys` table are
+  unchanged.
+- `v1.7.4` is published, so `published_release` is `1.7.4`, and the
+  `action.yml` `release-tag` default and the `docs/install.md` command move from
+  `v1.7.3` to `v1.7.4`. They move to `v1.7.5` once it is published; until then
+  the hub's auditor pin names `v1.7.4` as the previous published release.
+- `agent/standard-version.toml` declares `auditor_version = "1.7.5"`, the
+  family auditor pin.
+
 ## [1.7.4] - 2026-10-14
 
 `VERSION` is `1.7.4-split.0`, the member version shipped in the 1.7.4 family
