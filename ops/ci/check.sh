@@ -61,6 +61,9 @@ echo "[ci] SBOM components: $(cat target/jankurai/security/sbom-components.txt)"
 
 echo "[ci] check: protected-main baseline (recorded) and score-floor audit"
 bash ops/ci/prepare-baseline.sh
+# --no-badge: an enforcing audit otherwise rewrites the committed badge from
+# agent/baselines/main.repo-score.json, and refuses to because that report is
+# advisory. The gate scores the head; it never edits committed files.
 reverify_auditor
 "$JANKURAI" audit . --mode standard --baseline target/jankurai/accepted-baseline.json --full \
-  --no-score-history --json .jankurai/repo-score.json --md .jankurai/repo-score.md
+  --no-badge --no-score-history --json .jankurai/repo-score.json --md .jankurai/repo-score.md

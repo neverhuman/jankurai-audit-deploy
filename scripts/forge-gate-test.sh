@@ -63,6 +63,8 @@ check "check.sh runs the enforcing audit, recording the comparison with main" \
 # The floor lives only in agent/audit-policy.toml; a --fail-under in check.sh
 # could only raise it (jankurai takes the higher of the two), but it would hide
 # where the number is set (docs/decisions/0001-score-floor-85.md).
+check "check.sh's audit does not rewrite the committed badge" \
+  has_line '^  --no-badge --no-score-history ' ops/ci/check.sh
 check "check.sh takes the score floor from agent/audit-policy.toml only" \
   bash -c "! grep -v -E '^[[:space:]]*#' ops/ci/check.sh | grep -q -- '--fail-under'"
 check "agent/audit-policy.toml sets the score floor" \
