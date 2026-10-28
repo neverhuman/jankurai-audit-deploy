@@ -51,7 +51,7 @@ lock_table="$(sed -n '/^release_signers_table = \[/,/^\]/s/^ *"\(.*\)",\{0,1\}$/
 [[ -n "$lock_table" ]] || { echo "${lock}: missing release_signers_table" >&2; exit 1; }
 [[ "$installer_table" == "$lock_table" ]] || {
   echo "jankurai-installer.sh release_keys table differs from ${lock} release_signers_table:" >&2
-  diff <(printf '%s\n' "$lock_table") <(printf '%s\n' "$installer_table") >&2 || true
+  diff <(printf '%s\n' "$lock_table") <(printf '%s\n' "$installer_table") >&2 || exit 1
   exit 1
 }
 while IFS='|' read -r name sha _; do
