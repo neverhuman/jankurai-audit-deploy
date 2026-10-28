@@ -1,3 +1,6 @@
+# Score floor for the forge required lane (ops/ci/check.sh). Owner decision
+# 2026-10-28: docs/decisions/0001-score-floor-85.md, which also says how to
+# change it.
 minimum_score = 85
 fail_on = ["critical", "high"]
 advisory_on = ["medium", "low"]

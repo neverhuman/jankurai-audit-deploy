@@ -5,7 +5,8 @@
 # execute the exact same command: `bash scripts/ci-local.sh pr-ci`.
 #
 # It runs the full gate in ops/ci/check.sh (required lane, gitleaks, syft
-# SBOM, ratchet audit against protected main) with the governed auditor only:
+# SBOM, audit against the score floor in agent/audit-policy.toml) with the
+# governed auditor only:
 # a JANKURAI override is refused here. Whatever the outcome, it then writes a
 # local evidence bundle in the workspace, so a failing head still leaves its
 # partial output behind for review. Nothing is skipped: a missing tool fails

@@ -27,7 +27,7 @@ just setup
 # Deterministic fast lane (required local proof + no-write self-audit).
 just fast
 
-# Full gate the forge runs: required lane, gitleaks, SBOM, ratchet audit.
+# Full gate the forge runs: required lane, gitleaks, SBOM, score-floor audit.
 just check
 ```
 
@@ -49,7 +49,7 @@ no workflows. The local-CI contract is documented in
 | `ops/` | CI, release, signing, deploy, and security entrypoints |
 | `scripts/` | local CI runner, doctor, and split-metadata helpers |
 | `agent/` | machine-readable owner, test, boundary, and generated-zone maps |
-| `docs/` | architecture, testing, boundaries, release, and exception docs |
+| `docs/` | architecture, testing, boundaries, release, and exception docs, and decision records (`docs/decisions/`) |
 | `action.yml` | composite GitHub Action that installs the auditor |
 | `jankurai-installer.sh` | standalone installer published with each release, vendored byte-for-byte from the hub |
 | `agent/vendor/` | hub-installer lock and the vendored release-signing public key ([provenance](docs/release-signing.md)) |

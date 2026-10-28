@@ -51,8 +51,11 @@ hub. Release builds depend on immutable tags, never branches.
 
 ## Integrity, provenance, and SBOM
 
-- **Gate**: the forge `required` lane runs `ops/ci/check.sh`, whose ratchet
-  audit fails a head that scores below protected main under the same auditor.
+- **Gate**: the forge `required` lane runs `ops/ci/check.sh`, whose audit
+  fails a head that scores below the floor in `agent/audit-policy.toml` (85,
+  [decision 0001](decisions/0001-score-floor-85.md)) or has a critical or high
+  finding. The comparison with protected main under the same auditor is
+  recorded in the report, not enforced.
 - **Signing**: done by the hub with the held release key; see the hub's
   `docs/release.md`. Nothing in this repository signs.
 - **SBOM**: `ops/ci/check.sh` writes a CycloneDX SBOM with `syft` to
@@ -62,7 +65,9 @@ hub. Release builds depend on immutable tags, never branches.
 - **Auditor identity**: the gate scores only with the governed jankurai
   install whose SHA-256 matches the host's authority stamp, through a private
   copy re-verified before each audit (see [ci-local.md](ci-local.md)). This
-  narrows, but cannot close, tampering by code running as the gate's own user.
+  narrows, but cannot close, tampering by code running as the gate's own user:
+  the stamp is self-attesting (known limit and follow-up in
+  [decision 0001](decisions/0001-score-floor-85.md)).
 - **Run evidence (not provenance)**: `gitleaks` scans the full history for
   secrets on every gate run. Each run leaves a local bundle in the gate
   workspace under `target/jankurai/evidence/<commit>/` (SBOM, audit reports,
@@ -84,9 +89,10 @@ real artifact or command:
   action lint locally.
 - **Backups**: the Jeryu forge keeps an authoritative copy of every mirrored
   commit and tag, so a lost GitHub mirror is restored from the forge.
-- **Monitoring**: a score regression shows up as a failed ratchet on the
-  forge's `required` check; the local evidence bundle helps review that run
-  while its workspace lasts.
+- **Monitoring**: a score below the floor fails the forge's `required` check;
+  a smaller regression shows up as `decision.ratchet.score_delta` in the
+  head's report. The local evidence bundle helps review that run while its
+  workspace lasts.
 - **Rollback**: documented below; tags are immutable, so any prior release is
   re-fetchable.
 - **Abuse controls**: no CI credential lives on GitHub; the mirror only

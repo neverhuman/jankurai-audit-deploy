@@ -18,6 +18,9 @@
 # between the re-check and the exec, or with the stamp itself. A shell lane in
 # the repository it gates cannot enforce a boundary against its own user; the
 # check narrows the window and records what scored, it does not prove it.
+# Known limit: the stamp is self-attesting (same home, same user), so this
+# checks consistency, not provenance. Recorded with its follow-up in
+# docs/decisions/0001-score-floor-85.md.
 
 auditor_die() { echo "auditor: $*" >&2; exit 1; }
 

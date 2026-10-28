@@ -5,7 +5,7 @@
 # The forge gate runs one command per head: `just required` when the Justfile
 # has that recipe, otherwise ops/ci/pr-ci.sh. This repository has no
 # `just required`, so the gate runs ops/ci/pr-ci.sh: ops/ci/check.sh (required
-# lane, gitleaks, syft SBOM, ratchet audit) plus a local evidence bundle.
+# lane, gitleaks, syft SBOM, score-floor audit) plus a local evidence bundle.
 # scripts/forge-gate-test.sh keeps this file, those scripts and the Justfile
 # in agreement.
 schema_version = "2"

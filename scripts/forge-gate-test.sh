@@ -11,7 +11,8 @@
 #     in place of ops/ci/pr-ci.sh;
 #   - ops/ci/pr-ci.sh runs ops/ci/check.sh and always collects evidence;
 #   - ops/ci/check.sh runs the required lane, gitleaks, the syft SBOM and the
-#     ratchet audit, none of them masked;
+#     enforcing (standard mode) audit against the policy's score floor, none of
+#     them masked;
 #   - the auditor is the governed install verified against the host's
 #     authority stamp: check.sh fails closed on a missing stamp, a digest
 #     mismatch or a group/world-writable stamp, and pr-ci.sh refuses a
@@ -57,8 +58,15 @@ check "check.sh writes the SBOM to the evidence path" \
 check "check.sh records the SBOM component count" \
   has_line 'target/jankurai/security/sbom-components\.txt' ops/ci/check.sh
 check "check.sh scores protected main as the baseline" has_line '^bash ops/ci/prepare-baseline\.sh$' ops/ci/check.sh
-check "check.sh runs the ratchet audit against it" \
-  has_line 'audit \. --mode ratchet --baseline target/jankurai/accepted-baseline\.json' ops/ci/check.sh
+check "check.sh runs the enforcing audit, recording the comparison with main" \
+  has_line 'audit \. --mode standard --baseline target/jankurai/accepted-baseline\.json --full' ops/ci/check.sh
+# The floor lives only in agent/audit-policy.toml; a --fail-under in check.sh
+# could only raise it (jankurai takes the higher of the two), but it would hide
+# where the number is set (docs/decisions/0001-score-floor-85.md).
+check "check.sh takes the score floor from agent/audit-policy.toml only" \
+  bash -c "! grep -v -E '^[[:space:]]*#' ops/ci/check.sh | grep -q -- '--fail-under'"
+check "agent/audit-policy.toml sets the score floor" \
+  has_line '^minimum_score = [0-9]+$' agent/audit-policy.toml
 # Every script the lane executes. A pattern match, not a proof: it catches
 # `|| true`, `||true`, `|| true;`, `|| :`, `|| exit 0` and `set +e` outside
 # comments.

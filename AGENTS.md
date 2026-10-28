@@ -16,6 +16,6 @@ split family: the release, signing, mirroring, and split-generator member.
   [`agent/generated-zones.toml`](agent/generated-zones.toml).
 - Durable detail lives in the docs, not here: [architecture](docs/architecture.md),
   [boundaries](docs/boundaries.md), [testing](docs/testing.md),
-  [release](docs/release.md), [exceptions](docs/exceptions.md), and
-  [CI-local](docs/ci-local.md).
+  [release](docs/release.md), [exceptions](docs/exceptions.md),
+  [CI-local](docs/ci-local.md), and [decisions](docs/decisions/README.md).
 - Run `bash scripts/ci-local.sh required` (or `just fast`) before handing off.

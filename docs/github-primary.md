@@ -10,6 +10,8 @@ and the historical extraction tools independently editable.
 `bash ops/ci/check.sh` (the body of the forge `required` lane) runs deployment
 script validation, `action.yml` lint, secret scanning, a CycloneDX software bill
 of materials (empty here, since the repository has no package manifests, so no
-vulnerability scan runs), and the ratchet audit against protected main. Full Rust, proof, conformance, UX, and release-platform checks run against
+vulnerability scan runs), and the audit against the score floor
+(`minimum_score` in `agent/audit-policy.toml`, 85; see
+[decisions/0001](decisions/0001-score-floor-85.md)). Full Rust, proof, conformance, UX, and release-platform checks run against
 the hub's locked family. The obsolete monolithic workflow definitions are
 preserved in `docs/legacy-workflows/` for history; nothing runs them.

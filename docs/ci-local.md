@@ -27,7 +27,7 @@ and is not release provenance.
 | Command | Runs | Network |
 | --- | --- | --- |
 | `bash scripts/ci-local.sh pr-ci` | exactly what the forge runs: `ops/ci/check.sh` (governed auditor only) plus the evidence bundle | none |
-| `just check` / `just verify` | `ops/ci/check.sh`: required lane, gitleaks, syft SBOM, ratchet audit against protected main | none |
+| `just check` / `just verify` | `ops/ci/check.sh`: required lane, gitleaks, syft SBOM, audit against the score floor (85) | none |
 | `just fast` / `just test` | the required lane, then an advisory audit with the verified auditor (`ops/ci/self-audit.sh`) | none |
 | `bash scripts/ci-local.sh required` | the required lane only | none |
 | `just security` | `tools/security-lane.sh`: gitleaks, action lint, script digests | none |
@@ -66,8 +66,12 @@ the hub (network unless the sibling is present); a few seconds.
    and would only add a network fetch of a vulnerability database to the merge
    gate, so none runs.
 4. `ops/ci/prepare-baseline.sh` scores protected `origin/main` with the same
-   auditor binary, and `jankurai audit --mode ratchet` fails the head if it
-   scores below main.
+   auditor binary, and `jankurai audit --mode standard --baseline ...` scores
+   the head. The head fails below `minimum_score` in
+   `agent/audit-policy.toml` (85) or on any critical or high finding; the
+   comparison with main is recorded in the report as `decision.ratchet` and
+   does not fail it. The decision and how to change the floor:
+   [decisions/0001-score-floor-85.md](decisions/0001-score-floor-85.md).
 
 The auditor is never taken from PATH and has no in-repo version pin (the family
 keeps one pin of record, on the governed host install). `check.sh` uses
@@ -88,7 +92,11 @@ check. The residual risk is stated in `ops/ci/auditor.sh`: code running as the
 same user, including the pull request's own shell, can still tamper with the
 copy or the stamp. A shell lane inside the repository it gates cannot enforce a
 boundary against its own user (nor could the lane before this change); the
-check narrows the window and records what scored, it does not prove it.
+check narrows the window and records what scored, it does not prove it. The
+stamp is self-attesting (it sits beside the binary, writable by the same
+user), so it proves consistency, not provenance; this known limit and its
+follow-up are recorded in
+[decisions/0001-score-floor-85.md](decisions/0001-score-floor-85.md).
 The identity check needs GNU or BSD `stat` and `sha256sum` or `shasum`, and
 fails with an explicit "unsupported platform" message otherwise.
 

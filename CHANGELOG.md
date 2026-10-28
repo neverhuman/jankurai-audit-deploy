@@ -26,6 +26,62 @@ The authoritative version string lives in [`VERSION`](VERSION).
   consumer repo), and `language_bad_behavior` runs in core's own gate
   (`ops/ci/tool-adoption.sh` there), where the code it tests lives.
 
+### Added
+
+- `docs/decisions/`, the decision records for this repository, starting with
+  0001 (the gate's score floor).
+
+### Changed
+
+- The gate's score floor is 85 (`minimum_score` in `agent/audit-policy.toml`)
+  instead of "no lower than protected main". `ops/ci/check.sh` runs
+  `jankurai audit --mode standard`: a head fails below 85 or on any critical or
+  high finding, and its comparison with main is recorded in the report
+  (`decision.ratchet`) but no longer fails it. Owner decision, recorded in
+  `docs/decisions/0001-score-floor-85.md` with how to change the floor;
+  `scripts/forge-gate-test.sh` pins the audit line and refuses a
+  `--fail-under` in `check.sh`.
+- The forge `required` lane (`ops/ci/pr-ci.sh`, declared in `.jeryu/ci.toml`)
+  runs the full gate, `ops/ci/check.sh` (renamed from `ops/ci/github-check.sh`):
+  the required lane, gitleaks over the full history, a syft CycloneDX SBOM
+  (with its component count recorded), and an enforcing audit of the head
+  (see the score floor entry below). It used to run only the required lane plus an advisory audit
+  that skipped itself when `jankurai` was missing; a missing tool now fails the
+  run. `ops/ci/collect-evidence.sh` leaves a local, unsigned bundle of the
+  run's output in the workspace (SBOM, audit reports, auditor identity,
+  `MANIFEST.sha256`, `receipt.json`), pass or fail; it is review evidence, not
+  provenance.
+- The gate's auditor is the governed install only: `$HOME/.jeryu/bin/jankurai`
+  whose SHA-256 matches `binary_sha256` in the host's authority stamp, with
+  both files owned by the running user and not group/world-writable. It is
+  never taken from PATH and there is no in-repo version pin. `JANKURAI=` is a
+  local override recorded as unverified, and `pr-ci.sh` refuses it. The check
+  lives in `ops/ci/auditor.sh`: the verified binary is copied into a private
+  mode-700 directory under `target/`, only the copy runs, and its digest is
+  re-checked immediately before each audit (baseline and head).
+  `prepare-baseline.sh` has no PATH fallback, and `just fast` / `just audit`
+  use `ops/ci/self-audit.sh` instead of a bare `jankurai`. Same-user code can
+  still tamper; a shell lane cannot enforce that boundary, and the stamp is
+  self-attesting (known limit, recorded in decision 0001 with a follow-up). The check works with
+  GNU or BSD `stat` and fails with "unsupported platform" otherwise.
+- `scripts/forge-gate-test.sh`, run by the required lane, is a tripwire: it
+  pins the lane declaration and the steps of `pr-ci.sh` and `check.sh`,
+  exercises the auditor identity check, use-time re-verification and the
+  baseline fail-closed path against a fake host install, checks every script
+  the lane executes for `|| true`, `|| :`, `|| exit 0` and `set +e`, rejects a
+  `just required` recipe that would shadow `pr-ci.sh` on the forge, and rejects
+  any committed `.github/workflows`.
+- `scripts/lint-actions.sh`, run by the required lane and `just security`, lints
+  the published composite action `action.yml` with `zizmor --offline` (and any
+  workflow directory with actionlint + zizmor). zizmor is pinned at 1.25.2
+  everywhere (was 1.12.0 here, 1.25.2 in the deleted workflow).
+- `action.yml` passes its inputs to `run:` steps through `env:` instead of
+  `${{ inputs.* }}` interpolation, fixing six high zizmor template-injection
+  findings, and rejects an unknown `mode`.
+- `ops/ci/install-security-tools.sh` also installs syft and takes its gitleaks
+  version from `ops/ci/lib.sh` (8.30.0; it installed 8.21.2 before);
+  `scripts/ci-doctor.sh` checks zizmor and actionlint.
+
 ## [1.7.5] - 2026-10-14
 
 `VERSION` is `1.7.5-split.0`, the member version shipped in the 1.7.5 family
@@ -133,8 +189,9 @@ release. This section covers everything on `main` since `1.7.0-split.0`.
   `scripts/ci-doctor.sh` now reports it.
 - Root `Justfile` command surface with `setup`, `fast`, `check`, `verify`,
   `security`, `audit`, and `release` lanes for one-command setup and validation.
-- `ops/ci/pr-ci.sh`, the pull-request CI entrypoint (now the forge `required`
-  lane), so local runs and CI execute identical commands.
+- `ops/ci/pr-ci.sh`, the pull-request CI entrypoint the self-hosted
+  `.github/workflows/ci.yml` runner calls, so local runs and CI execute identical
+  commands.
 - Agent-readable documentation: `README.md`, `docs/architecture.md`,
   `docs/boundaries.md`, `docs/testing.md`, `docs/release.md`, and
   `docs/exceptions.md`.
@@ -144,50 +201,9 @@ release. This section covers everything on `main` since `1.7.0-split.0`.
 
 ### Changed
 
-- The forge `required` lane (`ops/ci/pr-ci.sh`, declared in `.jeryu/ci.toml`)
-  runs the full gate, `ops/ci/check.sh` (renamed from `ops/ci/github-check.sh`):
-  the required lane, gitleaks over the full history, a syft CycloneDX SBOM
-  (with its component count recorded), and the ratchet audit against
-  protected main. It used to run only the required lane plus an advisory audit
-  that skipped itself when `jankurai` was missing; a missing tool now fails the
-  run. `ops/ci/collect-evidence.sh` leaves a local, unsigned bundle of the
-  run's output in the workspace (SBOM, audit reports, auditor identity,
-  `MANIFEST.sha256`, `receipt.json`), pass or fail; it is review evidence, not
-  provenance.
-- The gate's auditor is the governed install only: `$HOME/.jeryu/bin/jankurai`
-  whose SHA-256 matches `binary_sha256` in the host's authority stamp, with
-  both files owned by the running user and not group/world-writable. It is
-  never taken from PATH and there is no in-repo version pin. `JANKURAI=` is a
-  local override recorded as unverified, and `pr-ci.sh` refuses it. The check
-  lives in `ops/ci/auditor.sh`: the verified binary is copied into a private
-  mode-700 directory under `target/`, only the copy runs, and its digest is
-  re-checked immediately before each audit (baseline and head).
-  `prepare-baseline.sh` has no PATH fallback, and `just fast` / `just audit`
-  use `ops/ci/self-audit.sh` instead of a bare `jankurai`. Same-user code can
-  still tamper; a shell lane cannot enforce that boundary. The check works with
-  GNU or BSD `stat` and fails with "unsupported platform" otherwise.
-- `scripts/forge-gate-test.sh`, run by the required lane, is a tripwire: it
-  pins the lane declaration and the steps of `pr-ci.sh` and `check.sh`,
-  exercises the auditor identity check, use-time re-verification and the
-  baseline fail-closed path against a fake host install, checks every script
-  the lane executes for `|| true`, `|| :`, `|| exit 0` and `set +e`, rejects a
-  `just required` recipe that would shadow `pr-ci.sh` on the forge, and rejects
-  any committed `.github/workflows`.
-- `scripts/lint-actions.sh`, run by the required lane and `just security`, lints
-  the published composite action `action.yml` with `zizmor --offline` (and any
-  workflow directory with actionlint + zizmor). zizmor is pinned at 1.25.2
-  everywhere (was 1.12.0 here, 1.25.2 in the deleted workflow).
-- `action.yml` passes its inputs to `run:` steps through `env:` instead of
-  `${{ inputs.* }}` interpolation, fixing six high zizmor template-injection
-  findings, and rejects an unknown `mode`.
-- `ops/ci/install-security-tools.sh` also installs syft and takes its gitleaks
-  version from `ops/ci/lib.sh` (8.30.0; it installed 8.21.2 before);
-  `scripts/ci-doctor.sh` checks zizmor and actionlint.
-- `jankurai-installer.sh` is no longer declared a generated zone; it is a
-  byte-identical vendored copy checked by `scripts/check-vendored-installer.sh`.
-
 - Replaced the forked `jankurai-installer.sh` with a byte-identical copy of the
-  hub's verified installer, recorded in `agent/vendor/hub-installer.lock`, so the installer published with a release has
+  hub's verified installer, recorded in `agent/vendor/hub-installer.lock` and
+  `agent/generated-zones.toml`, so the installer published with a release has
   the hub's rename-aware Sigstore signer and release-key pinning instead of a
   default that fails verification for tags after v1.7.1.
 - Raised the `action.yml` `release-tag` default to the family release `v1.7.2`

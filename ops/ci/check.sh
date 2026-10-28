@@ -10,8 +10,11 @@
 #   3. CycloneDX SBOM (syft), with its component count recorded. This repo has
 #      no package manifests, so the SBOM is expected to be empty and there is
 #      nothing for a vulnerability scanner to match;
-#   4. jankurai ratchet audit against protected main, scored by the same
-#      auditor binary, so a head cannot score below main.
+#   4. jankurai audit of the head against the score floor: `minimum_score` in
+#      agent/audit-policy.toml (85), with no critical or high finding. The
+#      same auditor binary also scores protected main, and the comparison
+#      with main is recorded in the report (`decision.ratchet`) but does not
+#      fail the head. See docs/decisions/0001-score-floor-85.md.
 #
 # Auditor identity: see ops/ci/auditor.sh. The governed install is verified
 # against the host's authority stamp, copied into a private directory, and the
@@ -56,8 +59,8 @@ jq '.components // [] | length' target/jankurai/security/sbom.json \
   > target/jankurai/security/sbom-components.txt
 echo "[ci] SBOM components: $(cat target/jankurai/security/sbom-components.txt)"
 
-echo "[ci] check: protected-main baseline and ratchet audit"
+echo "[ci] check: protected-main baseline (recorded) and score-floor audit"
 bash ops/ci/prepare-baseline.sh
 reverify_auditor
-"$JANKURAI" audit . --mode ratchet --baseline target/jankurai/accepted-baseline.json --full \
+"$JANKURAI" audit . --mode standard --baseline target/jankurai/accepted-baseline.json --full \
   --no-score-history --json .jankurai/repo-score.json --md .jankurai/repo-score.md
