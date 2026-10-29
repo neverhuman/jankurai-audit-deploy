@@ -121,12 +121,31 @@ git -C <hub checkout> show cf5e0c8b078a978a5396af329460a116d7acc08b:release-keys
 JANKURAI_HUB=<hub checkout> bash scripts/check-vendored-installer.sh
 ```
 
-## The open-ended range is intentional
+## The open-ended range, and the owner's decision to close it
 
 The pin's last tag is empty: the key covers `v1.7.2` and every later tag until
-it is rotated. This is deliberate. One key signs every release until the owner
-rotates it, and pinning a closing tag ahead of time would make the next
+it is rotated. The argument for that was that one key signs every release until
+the owner rotates it, so pinning a closing tag ahead of time would make the next
 release unverifiable.
+
+The owner has since ruled the other way: a release-key pin must cover exactly
+the releases it signs, not an open-ended range, so a release nobody has reviewed
+the pin for fails closed instead of inheriting trust. The key has signed
+`v1.7.2`, `v1.7.3`, `v1.7.4` and `v1.7.5`, so its line should end `|v1.7.5` and
+be extended by a reviewed change for each later release.
+
+That change cannot land here. `jankurai-installer.sh` in this repository is the
+hub's file byte for byte, and the required lane proves it against the hub's
+`main` (above); closing the range here would be a hand-edit of vendored trust
+material and the lane would, correctly, refuse it. The range is closed in the
+hub's `jankurai-installer.sh` first, and this repository then follows with
+`bash scripts/sync-hub-installer.sh <hub checkout>` — the same path as a
+rotation. `scripts/check-vendored-installer.sh` currently requires the current
+key's line to be open-ended from its first tag; that expectation moves to "ends
+at the last release the key signed" in the same sync.
+
+`neverhuman/jankurai-action` does not vendor the hub installer, so its own copy
+already pins the bounded range `v1.7.2|v1.7.5`.
 
 ## Rotation and revocation
 

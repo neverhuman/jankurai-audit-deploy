@@ -16,18 +16,17 @@ bytes. From `v1.7.2` on, releases are verified against one pinned
 release-signing key; where that pin comes from, how this repo checks it and how
 it rotates is in [`release-signing.md`](release-signing.md).
 
-The command below and the `action.yml` `release-tag` default name `v1.7.4`, the
-newest published release (`published_release` in the lock). The family release
-`v1.7.5` follows its publication: once the hub has published it, both move to
-`v1.7.5` together, and the required lane checks they agree with the lock.
+The command below and the `action.yml` `release-tag` default name `v1.7.5`, the
+newest published release (`published_release` in the lock). It now equals the
+family release `v1.7.5`, which the hub has published with signed assets; the
+required lane checks both agree with the lock.
 
 Running this repository's own `jankurai-installer.sh` without `--tag` (or
 `JANKURAI_RELEASE_TAG`) uses the installer's default, `v1.7.5`, because it is the
-hub's file byte for byte; until `v1.7.5` is published that download fails, so
-pass `--tag v1.7.4`.
+hub's file byte for byte, so no `--tag` is needed to install the published release.
 
 ```bash
-curl -fsSL https://github.com/neverhuman/jankurai-audit/releases/download/v1.7.4/jankurai-installer.sh \
+curl -fsSL https://github.com/neverhuman/jankurai-audit/releases/download/v1.7.5/jankurai-installer.sh \
   | bash
 ```
 

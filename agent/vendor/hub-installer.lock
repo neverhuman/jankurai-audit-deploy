@@ -18,7 +18,11 @@ family_release = "1.7.5"
 # Newest release actually published. The action.yml release-tag default and the
 # docs/install.md command track this, so @main never points at a tag that does not
 # exist yet. It moves to family_release once the hub has published that release.
-published_release = "1.7.4"
+# v1.7.5 is published: its signed assets (jankurai-1.7.5-<target>.tar.gz, .sha256,
+# .cosign.bundle and jankurai-release-2026.pub) are on the release, and the
+# published key is byte-identical to the vendored one below, so it equals
+# family_release again.
+published_release = "1.7.5"
 
 # The release-signing public key the installer pins (release_keys table). The
 # key file is vendored byte-for-byte from the hub's release-keys/ directory,
