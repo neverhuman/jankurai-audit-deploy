@@ -159,6 +159,12 @@ echo "... the required lane unsets the opt-out and the hub-location variables fo
 # ancestors of main: currency, not just ancestry.
 git -C "$work/fakehub" checkout --quiet main
 git clone --quiet "$hub" "$work/movedhub"
+# Model the detached hub checkout used by the hosted runner.
+git -C "$work/movedhub" checkout --quiet --detach
+# Advance the branch the verifier actually trusts, never a detached commit.
+hub_main_commit="$(git -C "$hub" rev-parse "$(hub_main_ref "$hub")^{commit}")"
+git -C "$work/movedhub" checkout --quiet -B main "$hub_main_commit"
+[[ "$(git -C "$work/movedhub" symbolic-ref --short HEAD)" == main ]]
 sed -i "s/^\(jankurai-release-2026[.]pub|${pin_sha}|v1[.]7[.]2|\)\$/\1v1.7.2/" "$work/movedhub/jankurai-installer.sh"
 git -C "$work/movedhub" -c user.name=test -c user.email=test@example.invalid commit --quiet -am 'revoke the key after v1.7.2'
 stage; JANKURAI_HUB="$work/movedhub" expect_fail 'a hub main that has revoked the key since the locked commit is refused' "not the hub's current"
