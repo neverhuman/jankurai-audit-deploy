@@ -141,10 +141,60 @@ refuses "world-writable governed binary" "group/world-writable"
 chmod 0700 "$fake_home/.jeryu/bin/jankurai"
 refuses "JANKURAI override under pr-ci" "override refused" \
   JANKURAI="$PWD/$fake_home/.jeryu/bin/jankurai" JANKURAI_REQUIRE_GOVERNED=1
-accept_out="$(env -u JANKURAI HOME="$PWD/$fake_home" bash -c "$(declare -f with_timeout); with_timeout bash ops/ci/check.sh --identity-only" 2>&1)" &&
-  grep -qF 'auditor identity ok: governed' <<<"$accept_out" &&
-  ok "auditor check accepts a stamped, private governed install" ||
-  bad "auditor check rejected a stamped, private governed install: $accept_out"
+# Real resolution must reject a binary swap even after its home stamp is
+# rewritten to match. A user-owned anchor cannot authorize it either.
+printf '# swapped binary\n' >> "$fake_home/.jeryu/bin/jankurai"
+write_stamp "$(file_sha256 "$fake_home/.jeryu/bin/jankurai")"
+refuses "swapped binary with rewritten home stamp" "digest anchor must be root-owned" \
+  JANKURAI_AUTHORITY_DIGEST="$PWD/$fake_home/missing-anchor"
+printf '%s\n' "$(file_sha256 "$fake_home/.jeryu/bin/jankurai")" > "$fake_home/anchor"
+chmod 0400 "$fake_home/anchor"
+refuses "gate-user digest anchor with matching rewritten stamp" "digest anchor must be root-owned" \
+  JANKURAI_AUTHORITY_DIGEST="$PWD/$fake_home/anchor"
+# Exercise protected host paths without requiring privileged fixture writes.
+# Only metadata is simulated here; the integration refusals above use real files.
+check "protected path accepts root-owned read-only ancestry" bash -c '
+  source ops/ci/auditor.sh
+  file_uid_mode() { printf "0 444\n"; }
+  protected_digest_path /etc/passwd
+'
+check "protected path refuses writable ancestor metadata" bash -c '
+  source ops/ci/auditor.sh
+  file_uid_mode() { if [[ "$1" == /etc ]]; then echo "0 777"; else echo "0 444"; fi; }
+  ! protected_digest_path /etc/passwd
+'
+check "protected path refuses symlink" bash -c '
+  source ops/ci/auditor.sh
+  ! protected_digest_path /etc/mtab
+'
+
+# Once host path protection succeeds, exercise digest comparison and copying
+# with real binary bytes. Only the privileged path check is replaced here.
+check "matching protected digest resolves and copies governed binary" bash -c '
+  set -euo pipefail
+  source ops/ci/auditor.sh
+  protected_digest_path() { return 0; }
+  unset JANKURAI
+  HOME="$PWD/$1"
+  JANKURAI_AUTHORITY_DIGEST="$HOME/anchor"
+  resolve_auditor
+  [[ "$AUDITOR_IDENTITY" == governed* ]]
+  reverify_auditor
+  rm -r -- "$AUDITOR_DIR"
+' bash "$fake_home"
+check "rewritten stamp cannot override a different protected digest" bash -c '
+  set -euo pipefail
+  source ops/ci/auditor.sh
+  protected_digest_path() { return 0; }
+  unset JANKURAI
+  HOME="$PWD/$1"
+  JANKURAI_AUTHORITY_DIGEST="$HOME/anchor"
+  chmod 0600 "$JANKURAI_AUTHORITY_DIGEST"
+  printf "%064d\n" 0 > "$JANKURAI_AUTHORITY_DIGEST"
+  status=0
+  out="$(resolve_auditor 2>&1)" || status=$?
+  [[ "$status" != 0 && "$out" == *"does not match protected digest anchor"* ]]
+' bash "$fake_home"
 
 # Use-time re-verification: a copy that changed after verification is refused.
 cp "$fake_home/.jeryu/bin/jankurai" "$fake_home/copy"

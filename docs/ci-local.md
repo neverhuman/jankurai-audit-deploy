@@ -73,30 +73,28 @@ the hub (network unless the sibling is present); a few seconds.
    does not fail it. The decision and how to change the floor:
    [decisions/0001-score-floor-85.md](decisions/0001-score-floor-85.md).
 
-The auditor is never taken from PATH and has no in-repo version pin (the family
-keeps one pin of record, on the governed host install). `check.sh` uses
-`$HOME/.jeryu/bin/jankurai` only if its SHA-256 equals `binary_sha256` in the
-host's authority stamp `$HOME/.jeryu/authority/jankurai.json`
-(`jeryu.jankurai-authority-stamp/v1`), and both files are owned by the running
-user and not group- or world-writable; otherwise it fails closed. For a local
-run, `JANKURAI=/path just check` uses another binary and records it in
-`target/jankurai/auditor.txt` as an "unverified local override";
-`ops/ci/pr-ci.sh` refuses the override.
+The governed binary and its home authority stamp must agree, and their digest
+must also match `/etc/jankurai/auditor.sha256`. `JANKURAI_AUTHORITY_DIGEST` may
+select another absolute host path subject to the same checks. The anchor contains
+one lowercase SHA-256 digest, optionally followed by a newline. The file and
+every ancestor must be root-owned, have no group/world write bits, be unwritable
+by the gate user (including ACL access), and contain no symlinks. Root gates and
+missing or malformed anchors fail closed. The home stamp cannot authorize a
+replacement binary.
 
-The verified binary is copied into a fresh private directory (mode 700) under
-`target/`, and only the copy runs; its SHA-256 is re-checked immediately before
-each audit (protected-main baseline and head). `ops/ci/prepare-baseline.sh`
-fails closed when the verified auditor is not exported (no PATH fallback), and
-`just fast` / `just audit` go through `ops/ci/self-audit.sh`, which uses the same
-check. The residual risk is stated in `ops/ci/auditor.sh`: code running as the
-same user, including the pull request's own shell, can still tamper with the
-copy or the stamp. A shell lane inside the repository it gates cannot enforce a
-boundary against its own user (nor could the lane before this change); the
-check narrows the window and records what scored, it does not prove it. The
-stamp is self-attesting (it sits beside the binary, writable by the same
-user), so it proves consistency, not provenance; this known limit and its
-follow-up are recorded in
-[decisions/0001-score-floor-85.md](decisions/0001-score-floor-85.md).
+A host owner must independently verify the adopted release/build and obtain its
+digest from that trusted artifact, rather than copying the home stamp. Before
+running the gate, the owner must create `/etc/jankurai` with root ownership and
+mode 0755, then install the trusted digest as `auditor.sha256`, root-owned with
+mode 0644. Repeat this owner-controlled procedure whenever the adopted auditor
+changes. Never grant the gate user permission to update this anchor. This
+repository change does not provision the host.
+
+For local runs, `JANKURAI=/path just check` remains an explicitly unverified
+override; `ops/ci/pr-ci.sh` refuses it. The verified binary is copied into a
+private directory under `target/` and rehashed immediately before each audit.
+Same-user code can still race execution or modify the shell gate itself; hostile
+PR execution still requires host isolation.
 The identity check needs GNU or BSD `stat` and `sha256sum` or `shasum`, and
 fails with an explicit "unsupported platform" message otherwise.
 

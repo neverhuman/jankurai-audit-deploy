@@ -48,17 +48,14 @@ The gate enforces a fixed score floor of **85** instead of "no lower than
   under the ratchet. What no longer fails the head is a lower score than
   `main`, or a new score cap, while the score stays at or above 85.
 
-## Known limit: the auditor identity check is self-attesting
+## Auditor provenance follow-up
 
-`ops/ci/auditor.sh` accepts the governed `jankurai` when its SHA-256 equals
-`binary_sha256` in the host's authority stamp. Both the binary and the stamp
-live in the gate user's home and are writable by that user, which includes the
-pull request's own shell. The check therefore proves that the binary is the one
-the host's install recorded, not where that binary came from: anything able to
-replace the binary can rewrite the stamp to match. This decision does not
-change that. The follow-up is the jankurai todo "jankurai-deploy gate: anchor
-the auditor digest outside the gate user's home", which compares the binary
-against a digest the gate user cannot write.
+The original home-only authority stamp was self-attesting: a gate user able to
+replace the binary could also rewrite its stamp. The gate now additionally
+requires a digest protected by root ownership and non-writable ancestry outside
+the user's home. See [host provisioning](../ci-local.md) for the required owner
+install. Until provisioned, governed resolution fails closed. Same-user races
+at execution and modification of the shell gate still require host isolation.
 
 ## How to change the floor
 

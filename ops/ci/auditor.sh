@@ -2,25 +2,13 @@
 # ops/ci/prepare-baseline.sh and ops/ci/self-audit.sh.
 # shellcheck shell=bash
 #
-# There is no in-repo version pin: the family keeps one pin of record on the
-# governed host install. With JANKURAI unset, the auditor is
-# $HOME/.jeryu/bin/jankurai, accepted only when its SHA-256 equals
-# binary_sha256 in the host's authority stamp $HOME/.jeryu/authority/jankurai.json
-# (jeryu.jankurai-authority-stamp/v1) and both files are owned by the running
-# user and not group- or world-writable. JANKURAI=/path is an explicit local
-# override, recorded as unverified; JANKURAI_REQUIRE_GOVERNED=1 refuses it.
-#
-# resolve_auditor copies the verified binary into a fresh private directory
-# (mode 700) under target/ and exports JANKURAI (the copy) and JANKURAI_SHA256.
-# reverify_auditor re-hashes the copy and must run immediately before every
-# audit invocation. Residual risk, stated plainly: code running as the same
-# user (including the pull request's own shell) can still tamper with the copy
-# between the re-check and the exec, or with the stamp itself. A shell lane in
-# the repository it gates cannot enforce a boundary against its own user; the
-# check narrows the window and records what scored, it does not prove it.
-# Known limit: the stamp is self-attesting (same home, same user), so this
-# checks consistency, not provenance. Recorded with its follow-up in
-# docs/decisions/0001-score-floor-85.md.
+# The home authority stamp records install metadata; it is not a trust anchor.
+# Governed resolution also requires the digest in /etc/jankurai/auditor.sha256
+# (or JANKURAI_AUTHORITY_DIGEST), protected from the gate user along its entire
+# path. See docs/ci-local.md for owner provisioning. Explicit JANKURAI overrides
+# remain unverified and are refused by JANKURAI_REQUIRE_GOVERNED=1.
+# A private copy is rehashed before use. Same-user code can still race exec or
+# modify this shell lane; host isolation remains necessary for hostile PRs.
 
 auditor_die() { echo "auditor: $*" >&2; exit 1; }
 
@@ -67,10 +55,29 @@ owned_and_private() {
   (( (8#$mode & 8#022) == 0 ))
 }
 
+# Reject symlinks, replaceable ancestors, ACL write access, and root gates.
+# An environment-selected path is safe only if it meets the same host boundary.
+protected_digest_path() {
+  local path="$1" owner mode uid_mode
+  [[ "$(id -u)" != 0 && "$path" == /* && -f "$path" ]] || return 1
+  [[ "$path" != *'//'* && "$path" != */./* && "$path" != */../* ]] || return 1
+  while :; do
+    [[ ! -L "$path" && ! -w "$path" ]] || return 1
+    uid_mode="$(file_uid_mode "$path")" || return 1
+    read -r owner mode <<<"$uid_mode"
+    [[ "$owner" == 0 ]] && (( (8#$mode & 8#022) == 0 )) || return 1
+    [[ "$path" != / ]] || break
+    path="${path%/*}"
+    path="${path:-/}"
+    [[ -d "$path" ]] || return 1
+  done
+}
+
 resolve_auditor() {
   local governed_bin="$HOME/.jeryu/bin/jankurai"
   local authority_stamp="$HOME/.jeryu/authority/jankurai.json"
-  local source_bin verified_sha actual_sha auditor_dir
+  local source_bin verified_sha actual_sha auditor_dir anchor_sha
+  local digest_path="${JANKURAI_AUTHORITY_DIGEST:-/etc/jankurai/auditor.sha256}"
   auditor_platform_check
   if [[ -n "${JANKURAI:-}" ]]; then
     [[ "${JANKURAI_REQUIRE_GOVERNED:-0}" != "1" ]] ||
@@ -91,8 +98,14 @@ resolve_auditor() {
     actual_sha="$(file_sha256 "$governed_bin")"
     [[ "$actual_sha" == "$verified_sha" ]] ||
       auditor_die "governed jankurai does not match its authority stamp (have $actual_sha, stamp $verified_sha)"
+    protected_digest_path "$digest_path" ||
+      auditor_die "digest anchor must be root-owned and unwritable by the gate user, including all ancestors: $digest_path"
+    anchor_sha="$(cat -- "$digest_path")"
+    [[ "$anchor_sha" =~ ^[0-9a-f]{64}$ ]] || auditor_die "digest anchor must contain one SHA-256: $digest_path"
+    [[ "$actual_sha" == "$anchor_sha" ]] ||
+      auditor_die "governed jankurai does not match protected digest anchor: $digest_path"
     source_bin="$governed_bin"
-    AUDITOR_IDENTITY="governed (sha256 matches $authority_stamp)"
+    AUDITOR_IDENTITY="governed (sha256 matches protected anchor $digest_path; metadata $authority_stamp)"
   fi
   mkdir -p target
   auditor_dir="$(mktemp -d target/auditor.XXXXXX)"
