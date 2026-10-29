@@ -36,7 +36,7 @@ stage() {
   mkdir -p "$work/repo/scripts" "$work/repo/agent/vendor/release-keys"
   mkdir -p "$work/repo/docs"
   cp "$repo_root/scripts/check-vendored-installer.sh" "$repo_root/scripts/hub-source.sh" \
-    "$repo_root/scripts/sync-hub-installer.sh" "$work/repo/scripts/"
+    "$repo_root/scripts/sync-hub-installer.sh" "$repo_root/scripts/release-tag-bound.sh" "$work/repo/scripts/"
   cp "$repo_root/jankurai-installer.sh" "$repo_root/action.yml" "$work/repo/"
   cp "$repo_root/docs/install.md" "$work/repo/docs/"
   cp "$repo_root/agent/vendor/hub-installer.lock" "$work/repo/agent/vendor/"
@@ -100,6 +100,23 @@ expect_fail 'a vendored key that no table line pins is refused' 'is vendored but
 
 stage; rm -f "$work/repo/agent/vendor/release-keys/"*
 expect_fail 'an empty release-keys directory is refused' 'is missing'
+
+# --- the closed release-key range ---------------------------------------------
+# The hub's installer line stays open-ended, so the range is closed in the lock
+# and enforced by scripts/release-tag-bound.sh from the composite action. A
+# missing range, a range that does not reach the release this repository
+# installs, and an action that does not run the check must all fail.
+stage; sed -i '/^release_signer_last_tag = /d' "$work/repo/agent/vendor/hub-installer.lock"
+expect_fail 'a lock with no release_signer_last_tag is refused' 'never left open'
+
+stage; sed -i 's/^release_signer_last_tag = .*/release_signer_last_tag = "v1.7.2"/' "$work/repo/agent/vendor/hub-installer.lock"
+expect_fail 'a range that stops short of the installed release is refused' 'does not cover it'
+
+stage; sed -i 's/^release_signer_last_tag = .*/release_signer_last_tag = "v1.7"/' "$work/repo/agent/vendor/hub-installer.lock"
+expect_fail 'a release_signer_last_tag that is not a version tag is refused' 'must be a version tag'
+
+stage; sed -i '/release-tag-bound\.sh/d' "$work/repo/action.yml"
+expect_fail 'an action.yml that does not run the range check is refused' 'does not run scripts/release-tag-bound.sh'
 
 # --- coherent swap -------------------------------------------------------------
 # A fresh key replaces the vendored key file, and the installer pin, the lock's

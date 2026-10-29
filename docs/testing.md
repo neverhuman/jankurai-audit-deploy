@@ -37,6 +37,9 @@ and offline except for one step, the hub comparison in step 3, and it covers the
 4. `scripts/check-vendored-installer-test.sh` — every drift, a coherent key swap
    and an unavailable hub are refused.
 5. `scripts/installer-selftest.sh` — the offline installer self-test.
+6. `scripts/release-tag-bound-test.sh` — the closed release-key range the
+   composite action enforces before installing (the vendored installer's own
+   line is open-ended; see [`release-signing.md`](release-signing.md)).
 
 `jankurai-installer.sh` is byte-locked to the hub copy, so the self-test proves
 its behaviour without editing it. It copies the installer, repoints the pinned

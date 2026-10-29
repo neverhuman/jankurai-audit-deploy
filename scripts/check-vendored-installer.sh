@@ -147,9 +147,30 @@ action_tag="$(sed -n '/^  release-tag:/,/^  [a-z]/s/^    default: "\(.*\)"$/\1/p
 grep -qF "/releases/download/v${published}/jankurai-installer.sh" docs/install.md ||
   { echo "docs/install.md does not install the published release v${published}" >&2; exit 1; }
 
+# The hub's release_keys line is open-ended, so the closed range lives here and
+# is enforced by scripts/release-tag-bound.sh, which the composite action runs
+# before the installer. The range must be a real one, cover every release this
+# repository installs by default, and refuse the release after it; and the
+# action must actually run the check, or the bound would be documentation.
+key_last="$(lock_field release_signer_last_tag)"
+[[ "$key_last" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+  { echo "${lock}: release_signer_last_tag must be a version tag; the release-key range is never left open" >&2; exit 1; }
+grep -qF 'bash "$GITHUB_ACTION_PATH/scripts/release-tag-bound.sh"' action.yml ||
+  { echo "action.yml does not run scripts/release-tag-bound.sh before installing, so the release-key range is unenforced" >&2; exit 1; }
+next_release="v${key_last#v}"
+next_release="${next_release%.*}.$(( ${key_last##*.} + 1 ))"
+for covered in "v${published}" "v${release}" "$key_first" "$key_last"; do
+  bash scripts/release-tag-bound.sh "$covered" >/dev/null ||
+    { echo "scripts/release-tag-bound.sh refuses ${covered}, which this repository installs: ${lock} release-key range ${key_first}-${key_last} does not cover it" >&2; exit 1; }
+done
+if bash scripts/release-tag-bound.sh "$next_release" >/dev/null 2>&1; then
+  echo "scripts/release-tag-bound.sh accepts ${next_release}, past the reviewed release-key range ${key_first}-${key_last}" >&2
+  exit 1
+fi
+
 asset="$(JANKURAI_RELEASE_TAG="v${release}" bash jankurai-installer.sh --print-asset-name)"
 case "$asset" in
   "jankurai-${release}-"*) ;;
   *) echo "installer printed an unexpected asset name for v${release}: ${asset}" >&2; exit 1 ;;
 esac
-echo "vendored installer matches its lock, pins exactly the locked release_keys table (${key_name} ${key_sha} from ${key_first}), defaults to v${release} (${asset}); action.yml installs published v${published}; ${hub_note}"
+echo "vendored installer matches its lock, pins exactly the locked release_keys table (${key_name} ${key_sha} from ${key_first}), bounds key-signed installs to ${key_first}-${key_last} and refuses ${next_release}, defaults to v${release} (${asset}); action.yml installs published v${published}; ${hub_note}"

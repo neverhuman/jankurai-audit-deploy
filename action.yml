@@ -6,7 +6,7 @@ branding:
 
 inputs:
   release-tag:
-    description: "Jankurai release tag to install from neverhuman/jankurai-audit releases"
+    description: "Jankurai release tag to install from neverhuman/jankurai-audit releases. Key-signed tags are accepted only inside the release-key range reviewed in agent/vendor/hub-installer.lock (v1.7.2 to v1.7.5); a newer tag fails before any download until that range is extended."
     required: false
     default: "v1.7.5"
   mode:
@@ -23,6 +23,12 @@ runs:
   steps:
     - name: Install cosign
       uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22
+
+    - name: Check the release tag against the reviewed release-key range
+      shell: bash
+      env:
+        JANKURAI_RELEASE_TAG: ${{ inputs.release-tag }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/release-tag-bound.sh"
 
     - name: Install released jankurai
       shell: bash

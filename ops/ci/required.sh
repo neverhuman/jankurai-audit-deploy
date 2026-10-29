@@ -40,3 +40,6 @@ done
 env -u JANKURAI_HUB_CHECK -u JANKURAI_HUB -u JANKURAI_HUB_URL bash scripts/check-vendored-installer.sh
 env -u JANKURAI_HUB_CHECK -u JANKURAI_HUB -u JANKURAI_HUB_URL bash scripts/check-vendored-installer-test.sh
 bash scripts/installer-selftest.sh
+# The vendored installer's key pin is open-ended (it is the hub's bytes), so the
+# closed range this repository enforces before installing is proven here.
+bash scripts/release-tag-bound-test.sh

@@ -37,9 +37,15 @@ release_signer_path = "agent/vendor/release-keys/jankurai-release-2026.pub"
 release_signer_source_path = "release-keys/jankurai-release-2026.pub"
 release_signer_source_commit = "cf5e0c8b078a978a5396af329460a116d7acc08b"
 release_signer_sha256 = "99f48af11e4e6463544652ddfaefb0e9953de15fb0802b174123ac2907ff06fc"
-# First tag the key signs; the empty last tag in the installer pin means the
-# key stays current until a rotation closes its range.
+# The releases the vendored key has actually signed, first and last. The hub's
+# installer line is open-ended, so this is where the range is closed: the Action
+# runs scripts/release-tag-bound.sh before installing and refuses a key-signed
+# tag outside [first, last], so a future release is never trusted on a key pin
+# nobody reviewed for it. Extending the range or rotating the key is a reviewed
+# change here (scripts/check-vendored-installer.sh keeps it consistent with the
+# published and family releases).
 release_signer_first_tag = "v1.7.2"
+release_signer_last_tag = "v1.7.5"
 # The installer's whole release_keys table, line for line (name|sha256|first
 # tag|last tag). The check refuses any other line, so a key cannot be added and a
 # range cannot be closed or moved without changing this list, and every key

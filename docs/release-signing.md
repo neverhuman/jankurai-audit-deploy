@@ -121,31 +121,55 @@ git -C <hub checkout> show cf5e0c8b078a978a5396af329460a116d7acc08b:release-keys
 JANKURAI_HUB=<hub checkout> bash scripts/check-vendored-installer.sh
 ```
 
-## The open-ended range, and the owner's decision to close it
+## The open-ended range, closed here
 
-The pin's last tag is empty: the key covers `v1.7.2` and every later tag until
-it is rotated. The argument for that was that one key signs every release until
-the owner rotates it, so pinning a closing tag ahead of time would make the next
-release unverifiable.
+The hub's pin has an empty last tag: the key covers `v1.7.2` and every later tag
+until it is rotated. The argument for that was that one key signs every release
+until the owner rotates it, so pinning a closing tag ahead of time would make
+the next release unverifiable.
 
-The owner has since ruled the other way: a release-key pin must cover exactly
-the releases it signs, not an open-ended range, so a release nobody has reviewed
-the pin for fails closed instead of inheriting trust. The key has signed
-`v1.7.2`, `v1.7.3`, `v1.7.4` and `v1.7.5`, so its line should end `|v1.7.5` and
-be extended by a reviewed change for each later release.
+The owner has ruled the other way: a release-key pin must cover exactly the
+releases it signs, not an open-ended range, so a release nobody has reviewed the
+pin for fails closed instead of inheriting trust. The key has signed `v1.7.2`,
+`v1.7.3`, `v1.7.4` and `v1.7.5`.
 
-That change cannot land here. `jankurai-installer.sh` in this repository is the
-hub's file byte for byte, and the required lane proves it against the hub's
-`main` (above); closing the range here would be a hand-edit of vendored trust
-material and the lane would, correctly, refuse it. The range is closed in the
-hub's `jankurai-installer.sh` first, and this repository then follows with
-`bash scripts/sync-hub-installer.sh <hub checkout>` — the same path as a
-rotation. `scripts/check-vendored-installer.sh` currently requires the current
-key's line to be open-ended from its first tag; that expectation moves to "ends
-at the last release the key signed" in the same sync.
+The installer line itself cannot be closed here. `jankurai-installer.sh` in this
+repository is the hub's file byte for byte, and the required lane proves it
+against the hub's `main` (above); editing the line would be a hand-edit of
+vendored trust material and the lane would, correctly, refuse it. So this
+repository closes the range beside the installer instead, in the material it does
+own:
+
+- `agent/vendor/hub-installer.lock` records the range as
+  `release_signer_first_tag = "v1.7.2"` and `release_signer_last_tag = "v1.7.5"`
+  — the releases this repository has reviewed the key for.
+- `scripts/release-tag-bound.sh` refuses any key-signed tag outside that range.
+  Tags up to `v1.7.1` are keyless and pass through to the installer's Sigstore
+  identity check.
+- `action.yml` runs it as its own step **before** the install step, so a consumer
+  passing `release-tag: v1.7.6` fails before anything is downloaded, with the
+  message to extend the lock in a reviewed change first.
+- `scripts/check-vendored-installer.sh` requires `release_signer_last_tag` to be
+  a version tag (never empty), requires the range to cover the published and
+  family releases and the key's first tag, requires the action to run the check,
+  and exercises the script: it must accept those releases and refuse the next
+  patch after the range. `scripts/check-vendored-installer-test.sh` proves a
+  missing range, a range that stops short of the installed release and an
+  `action.yml` that drops the step are all refused.
+- `scripts/release-tag-bound-test.sh`, in the same lane, proves the script's own
+  behaviour: `v1.7.2`-`v1.7.5` and pre-releases inside the range accepted, the
+  keyless tags passed through, `v1.7.6`, `v1.8.0` and `v2.0.0` refused, and a
+  lock with no range or an inverted range refused outright.
+
+Extending the range for a later release is therefore a one-line, reviewable lock
+change here, made once that release is published and signed with this key. When
+the hub closes its own line, `bash scripts/sync-hub-installer.sh <hub checkout>`
+brings the bounded table over and `scripts/check-vendored-installer.sh`'s
+expectation that the current key's line is open-ended moves to "ends at the last
+release the key signed" in the same change.
 
 `neverhuman/jankurai-action` does not vendor the hub installer, so its own copy
-already pins the bounded range `v1.7.2|v1.7.5`.
+already pins the bounded range `v1.7.2|v1.7.5` in the installer itself.
 
 ## Rotation and revocation
 

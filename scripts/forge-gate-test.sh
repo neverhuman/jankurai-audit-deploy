@@ -74,7 +74,8 @@ check "agent/audit-policy.toml sets the score floor" \
 # comments.
 lane_scripts=(ops/ci/pr-ci.sh ops/ci/check.sh ops/ci/auditor.sh ops/ci/required.sh
   ops/ci/prepare-baseline.sh ops/ci/collect-evidence.sh scripts/ci-local-lanes-test.sh
-  scripts/lint-actions.sh scripts/check-vendored-installer.sh scripts/installer-selftest.sh)
+  scripts/lint-actions.sh scripts/check-vendored-installer.sh scripts/installer-selftest.sh
+  scripts/release-tag-bound.sh scripts/release-tag-bound-test.sh)
 masked() {
   grep -v -E '^[[:space:]]*#' "$@" |
     grep -qE '\|\|[[:space:]]*(true|:|exit[[:space:]]+0)([[:space:];)]|$)|(^|[[:space:];])set[[:space:]]+\+e'
@@ -165,6 +166,10 @@ else
 fi
 
 check "required lane lints action.yml" has_line '^bash scripts/lint-actions\.sh$' ops/ci/required.sh
+check "required lane proves the closed release-key range" \
+  has_line '^bash scripts/release-tag-bound-test\.sh$' ops/ci/required.sh
+check "the composite action checks the release tag against the range before installing" \
+  bash -c "awk '/release-tag-bound.sh/ { bound = NR } /jankurai-installer.sh/ { exit !(bound && bound < NR) }' action.yml"
 check "no GitHub workflow is committed (GitHub is a publishing mirror)" \
   bash -c "! git ls-files --error-unmatch .github/workflows >/dev/null 2>&1 && [[ ! -d .github/workflows ]]"
 
