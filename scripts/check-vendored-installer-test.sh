@@ -227,6 +227,11 @@ rm -rf "$work/jankurai"
 
 # --- sync-hub-installer.sh ------------------------------------------------------
 git -C "$work/fakehub" checkout --quiet main
+# The live hub composition may advance before its installer default does.
+# Model the vendored installer release in this fixture, independently of the
+# current composition, so sync is tested with a coherent release/key range.
+printf 'release = "%s"\n' "$(lock_value family_release)" > "$work/fakehub/family.lock"
+git -C "$work/fakehub" -c user.name=test -c user.email=test@example.invalid commit --quiet -am 'fixture: bind composition to vendored installer release'
 stage; cp "$repo_root/agent/vendor/release-keys/jankurai-release-2026.pub" "$work/repo/agent/vendor/release-keys/retired-2025.pub"
 bash "$work/repo/scripts/sync-hub-installer.sh" "$work/fakehub" >/dev/null ||
   { echo "FAIL: a sync from the hub should succeed and pass the check" >&2; exit 1; }
