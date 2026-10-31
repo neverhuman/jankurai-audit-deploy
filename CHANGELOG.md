@@ -1,11 +1,23 @@
 # Changelog
 
+This file is written when a release is cut: its notes are generated from the commits since the previous release. Do not add entries by hand; write a commit subject that says what changed.
+
 All notable changes to jankurai-deploy are documented in this file. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The authoritative version string lives in [`VERSION`](VERSION).
 
 ## [Unreleased]
+
+### Changed
+
+- Action and install-document defaults now select the published, key-signed
+  `v1.7.5` artifacts (public release ID `413074879`, published 2026-10-14).
+  The vendored installer and release key remain byte-identical; see
+  `docs/published-1.7.5.md` for independent reproduction and rollback guidance.
+- Auditor metadata prepares the next 1.7.6 hub composition. This source pin is
+  distinct from the currently published/vendored installer identity and does
+  not publish or install 1.7.6; the final hub validates their bounded transition.
 
 ### Removed
 
