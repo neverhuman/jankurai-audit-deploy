@@ -124,7 +124,7 @@ write_stamp() { printf '{"schema":"jeryu.jankurai-authority-stamp/v1","binary_sh
 refuses() {
   local name="$1" want="$2"; shift 2
   local out status=0
-  out="$(env -u JANKURAI HOME="$PWD/$fake_home" "$@" bash -c "$(declare -f with_timeout); with_timeout bash ops/ci/check.sh --identity-only" 2>&1)" || status=$?
+  out="$(env -u JANKURAI -u JANKURAI_REQUIRE_GOVERNED HOME="$PWD/$fake_home" "$@" bash -c "$(declare -f with_timeout); with_timeout bash ops/ci/check.sh --identity-only" 2>&1)" || status=$?
   if [[ "$status" -ne 0 ]] && grep -qF -- "$want" <<<"$out"; then
     ok "auditor check refuses: $name"
   else
@@ -172,6 +172,9 @@ check "protected path refuses symlink" bash -c '
 # It is conditional only for unprovisioned developer machines; the hosted gate
 # itself already requires this anchor before it reaches the tripwire.
 if [[ -f /etc/jankurai/auditor.sha256 && "$(id -u)" != 0 ]]; then
+  refuses "governed lane ignores a gate-user anchor matching a swapped binary" \
+    "does not match protected digest anchor: /etc/jankurai/auditor.sha256" \
+    JANKURAI_REQUIRE_GOVERNED=1 JANKURAI_AUTHORITY_DIGEST="$PWD/$fake_home/anchor"
   check "provisioned host accepts real governed auditor with canonical anchor despite hostile override" \
     bash -c '
       set -euo pipefail
@@ -190,7 +193,7 @@ check "matching protected digest resolves and copies governed binary" bash -c '
   set -euo pipefail
   source ops/ci/auditor.sh
   protected_digest_path() { return 0; }
-  unset JANKURAI
+  unset JANKURAI JANKURAI_REQUIRE_GOVERNED
   HOME="$PWD/$1"
   JANKURAI_AUTHORITY_DIGEST="$HOME/anchor"
   resolve_auditor
@@ -202,7 +205,7 @@ check "rewritten stamp cannot override a different protected digest" bash -c '
   set -euo pipefail
   source ops/ci/auditor.sh
   protected_digest_path() { return 0; }
-  unset JANKURAI
+  unset JANKURAI JANKURAI_REQUIRE_GOVERNED
   HOME="$PWD/$1"
   JANKURAI_AUTHORITY_DIGEST="$HOME/anchor"
   chmod 0600 "$JANKURAI_AUTHORITY_DIGEST"
