@@ -74,8 +74,9 @@ the hub (network unless the sibling is present); a few seconds.
    [decisions/0001-score-floor-85.md](decisions/0001-score-floor-85.md).
 
 The governed binary and its home authority stamp must agree, and their digest
-must also match `/etc/jankurai/auditor.sha256`. `JANKURAI_AUTHORITY_DIGEST` may
-select another absolute host path subject to the same checks. The anchor contains
+must also match `/etc/jankurai/auditor.sha256`. Governed lanes ignore
+`JANKURAI_AUTHORITY_DIGEST` and always use that canonical path. Only explicitly
+unverified local lanes may select another protected path. The anchor contains
 one lowercase SHA-256 digest, optionally followed by a newline. The file and
 every ancestor must be root-owned, have no group/world write bits, be unwritable
 by the gate user (including ACL access), and contain no symlinks. Root gates and
@@ -88,13 +89,32 @@ running the gate, the owner must create `/etc/jankurai` with root ownership and
 mode 0755, then install the trusted digest as `auditor.sha256`, root-owned with
 mode 0644. Repeat this owner-controlled procedure whenever the adopted auditor
 changes. Never grant the gate user permission to update this anchor. This
-repository change does not provision the host.
+repository includes `ops/ci/install-auditor-anchor.sh` for this explicit host step:
+
+```bash
+# Obtain DIGEST independently from the verified, adopted signed release.
+sudo bash ops/ci/install-auditor-anchor.sh "$DIGEST"
+env -u JANKURAI JANKURAI_REQUIRE_GOVERNED=1 bash ops/ci/check.sh --identity-only
+```
+
+Provision and verify every gate host **before** publishing an enforcing head.
+The installer requires root, accepts only an explicit digest, refuses symlink
+paths and unsafe ownership/modes, and never reads the user-writable home stamp.
+It is idempotent for the adopted digest and refuses changing an existing anchor;
+an auditor rotation requires a separate host-owner adoption.
+
+Governed gates require a non-root Unix user. The optional local-CI Docker image
+defaults to root and is therefore unsuitable for a governed gate as shipped.
+A governed container must run as a non-root user, provide that user's governed
+installation, and mount the host-adopted canonical anchor read-only. A root-run
+lane fails explicitly before scoring; changing anchor permissions cannot fix it.
 
 For local runs, `JANKURAI=/path just check` remains an explicitly unverified
 override; `ops/ci/pr-ci.sh` refuses it. The verified binary is copied into a
 private directory under `target/` and rehashed immediately before each audit.
 Same-user code can still race execution or modify the shell gate itself; hostile
 PR execution still requires host isolation.
+
 The identity check needs GNU or BSD `stat` and `sha256sum` or `shasum`, and
 fails with an explicit "unsupported platform" message otherwise.
 

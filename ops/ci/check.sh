@@ -17,7 +17,8 @@
 #      fail the head. See docs/decisions/0001-score-floor-85.md.
 #
 # Auditor identity: see ops/ci/auditor.sh. The governed install is verified
-# against the host's authority stamp, copied into a private directory, and the
+# against the protected host digest anchor plus its home metadata, copied into
+# a private directory, and the
 # copy is re-verified immediately before each audit (baseline and head).
 # ops/ci/pr-ci.sh refuses a JANKURAI override (JANKURAI_REQUIRE_GOVERNED=1).
 #

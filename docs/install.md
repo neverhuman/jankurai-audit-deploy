@@ -50,3 +50,12 @@ cd ../jankurai
 ./scripts/fuse.sh --source local --all
 .fusion/dev.sh build
 ```
+
+## Gate host digest anchor
+
+After verifying and adopting the signed auditor release, a host owner must
+provision its independently verified binary digest with
+`sudo bash ops/ci/install-auditor-anchor.sh "$DIGEST"` before running a governed
+gate. The canonical `/etc/jankurai/auditor.sha256` is root-owned and unwritable
+by the non-root gate user; changing home metadata cannot authorize another
+binary. See [the rollout and verification commands](ci-local.md).

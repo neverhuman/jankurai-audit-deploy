@@ -4,7 +4,7 @@
 #
 # The home authority stamp records install metadata; it is not a trust anchor.
 # Governed resolution also requires the digest in /etc/jankurai/auditor.sha256
-# (or JANKURAI_AUTHORITY_DIGEST), protected from the gate user along its entire
+# protected from the gate user along its entire
 # path. See docs/ci-local.md for owner provisioning. Explicit JANKURAI overrides
 # remain unverified and are refused by JANKURAI_REQUIRE_GOVERNED=1.
 # A private copy is rehashed before use. Same-user code can still race exec or
@@ -56,7 +56,7 @@ owned_and_private() {
 }
 
 # Reject symlinks, replaceable ancestors, ACL write access, and root gates.
-# An environment-selected path is safe only if it meets the same host boundary.
+# Governed lanes always use the canonical host-adopted path.
 protected_digest_path() {
   local path="$1" owner mode uid_mode
   [[ "$(id -u)" != 0 && "$path" == /* && -f "$path" ]] || return 1
@@ -79,6 +79,9 @@ resolve_auditor() {
   local source_bin verified_sha actual_sha auditor_dir anchor_sha
   local digest_path="${JANKURAI_AUTHORITY_DIGEST:-/etc/jankurai/auditor.sha256}"
   auditor_platform_check
+  if [[ "${JANKURAI_REQUIRE_GOVERNED:-0}" == 1 ]]; then
+    digest_path=/etc/jankurai/auditor.sha256
+  fi
   if [[ -n "${JANKURAI:-}" ]]; then
     [[ "${JANKURAI_REQUIRE_GOVERNED:-0}" != "1" ]] ||
       auditor_die "JANKURAI override refused: this lane scores only with the governed install ($governed_bin)"
@@ -87,6 +90,7 @@ resolve_auditor() {
     verified_sha="$(file_sha256 "$source_bin")"
     AUDITOR_IDENTITY="unverified local override ($source_bin)"
   else
+    [[ "$(id -u)" != 0 ]] || auditor_die "governed gates require a non-root Unix user; root can rewrite the digest anchor"
     owned_and_private "$authority_stamp" ||
       auditor_die "authority stamp missing, not owned by $(id -un), or group/world-writable: $authority_stamp"
     owned_and_private "$governed_bin" && [[ -x "$governed_bin" ]] ||

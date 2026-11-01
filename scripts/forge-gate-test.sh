@@ -14,7 +14,7 @@
 #     enforcing (standard mode) audit against the policy's score floor, none of
 #     them masked;
 #   - the auditor is the governed install verified against the host's
-#     authority stamp: check.sh fails closed on a missing stamp, a digest
+#     protected canonical digest anchor and home metadata: it fails on a missing stamp, a digest
 #     mismatch or a group/world-writable stamp, and pr-ci.sh refuses a
 #     JANKURAI override (exercised below, not only grepped);
 #   - the verified binary is used only through a private copy that is
@@ -167,6 +167,22 @@ check "protected path refuses symlink" bash -c '
   source ops/ci/auditor.sh
   ! protected_digest_path /etc/mtab
 '
+
+# Real acceptance must exercise the complete resolution chain and host boundary.
+# It is conditional only for unprovisioned developer machines; the hosted gate
+# itself already requires this anchor before it reaches the tripwire.
+if [[ -f /etc/jankurai/auditor.sha256 && "$(id -u)" != 0 ]]; then
+  check "provisioned host accepts real governed auditor with canonical anchor despite hostile override" \
+    bash -c '
+      set -euo pipefail
+      out="$(env -u JANKURAI JANKURAI_REQUIRE_GOVERNED=1 \
+        JANKURAI_AUTHORITY_DIGEST=/missing/untrusted-anchor \
+        bash ops/ci/check.sh --identity-only 2>&1)"
+      [[ "$out" == *"auditor identity ok: governed"* ]]
+    '
+else
+  printf 'SKIP: real governed acceptance requires non-root user and provisioned /etc/jankurai/auditor.sha256\n'
+fi
 
 # Once host path protection succeeds, exercise digest comparison and copying
 # with real binary bytes. Only the privileged path check is replaced here.

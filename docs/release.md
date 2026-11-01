@@ -86,12 +86,13 @@ hub. Release builds depend on immutable tags, never branches.
   `target/jankurai/security/sbom.json` and records its component count. The
   repository has no package manifests, so the SBOM is empty and no
   vulnerability scan runs on it.
-- **Auditor identity**: the gate scores only with the governed jankurai
-  install whose SHA-256 matches the host's authority stamp, through a private
-  copy re-verified before each audit (see [ci-local.md](ci-local.md)). This
-  narrows, but cannot close, tampering by code running as the gate's own user:
-  the stamp is self-attesting (known limit and follow-up in
-  [decision 0001](decisions/0001-score-floor-85.md)).
+- **Auditor identity**: the gate scores with the governed jankurai whose
+  SHA-256 matches the canonical root-owned `/etc/jankurai/auditor.sha256`
+  and home install metadata, through a private copy re-verified before each
+  audit. Provision the independently verified digest before enabling the gate
+  on a host; see [ci-local.md](ci-local.md). The home stamp cannot authorize
+  a different binary. Same-user execution races and changes to the shell lane
+  still require host isolation.
 - **Run evidence (not provenance)**: `gitleaks` scans the full history for
   secrets on every gate run. Each run leaves a local bundle in the gate
   workspace under `target/jankurai/evidence/<commit>/` (SBOM, audit reports,
