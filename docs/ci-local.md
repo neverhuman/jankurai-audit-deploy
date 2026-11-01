@@ -74,23 +74,25 @@ the hub (network unless the sibling is present); a few seconds.
    [decisions/0001-score-floor-85.md](decisions/0001-score-floor-85.md).
 
 The governed binary and its home authority stamp must agree, and their digest
-must also match `/etc/jankurai/auditor.sha256`. Governed lanes ignore
-`JANKURAI_AUTHORITY_DIGEST` and always use that canonical path. This includes local check, fast, and audit without
-`JANKURAI_REQUIRE_GOVERNED=1`. The anchor contains one lowercase SHA-256
-digest, or two distinct digest lines during rotation, optionally followed by a
-newline. The file and
-every ancestor must be root-owned, have no group/world write bits, be unwritable
-by the gate user (including ACL access), and contain no symlinks. Root gates and
-missing or malformed anchors fail closed. The home stamp cannot authorize a
-replacement binary.
+must also match `/etc/jankurai/auditor.sha256`. Every governed resolution uses
+that canonical path and no lane reads `JANKURAI_AUTHORITY_DIGEST`, including
+local `check`, `fast` and `audit` without `JANKURAI_REQUIRE_GOVERNED=1`: the
+variable selects nothing and setting it changes no outcome. The anchor contains
+one lowercase SHA-256 digest, or two distinct digest lines during an owner
+rotation, optionally followed by a newline. The file and every ancestor must be
+root-owned, have no group/world write bits, be unwritable by the gate user
+(including ACL access), and contain no symlinks. Root gates and missing or
+malformed anchors fail closed. The home stamp cannot authorize a replacement
+binary.
 
 A host owner must independently verify the adopted release/build and obtain its
 digest from that trusted artifact, rather than copying the home stamp. Before
 running the gate, the owner must create `/etc/jankurai` with root ownership and
 mode 0755, then install the trusted digest as `auditor.sha256`, root-owned with
-mode 0644. Repeat this owner-controlled procedure whenever the adopted auditor
-changes. Never grant the gate user permission to update this anchor. This
-repository includes `ops/ci/install-auditor-anchor.sh` for this explicit host step:
+mode 0644. When the adopted auditor changes, use the owner rotation below
+rather than rewriting the anchor in place. Never grant the gate user permission
+to update this anchor. This repository includes
+`ops/ci/install-auditor-anchor.sh` for this explicit host step:
 
 ```bash
 # Obtain DIGEST independently from the verified, adopted signed release.
@@ -102,7 +104,9 @@ Provision and verify every gate host **before** publishing an enforcing head.
 The installer requires root, accepts only an explicit digest, refuses symlink
 paths and unsafe ownership/modes, and never reads the user-writable home stamp.
 It is idempotent for the adopted digest and refuses implicit replacement.
-Provisioning supports GNU and BSD `stat` with an explicit platform diagnostic.
+Provisioning reads ownership and modes with GNU (`stat -c`) or BSD (`stat -f`)
+`stat` and refuses any other platform with an explicit diagnostic rather than a
+misleading ownership error.
 
 For rotation, independently verify both signed artifacts. Deploy readers with
 two-digest support to every lane before staging: older readers reject the new
