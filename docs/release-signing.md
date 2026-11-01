@@ -128,10 +128,34 @@ until it is rotated. The argument for that was that one key signs every release
 until the owner rotates it, so pinning a closing tag ahead of time would make
 the next release unverifiable.
 
-The owner has ruled the other way: a release-key pin must cover exactly the
+This repository decided the other way: a release-key pin must cover exactly the
 releases it signs, not an open-ended range, so a release nobody has reviewed the
-pin for fails closed instead of inheriting trust. The key has signed `v1.7.2`,
-`v1.7.3`, `v1.7.4` and `v1.7.5`.
+pin for fails closed instead of inheriting trust. How tags are parsed and
+ordered for that bound, and which pre-release forms are valid, is recorded in
+[decision 0002](decisions/0002-exact-release-tag-bound.md).
+
+### Asserted range, and verified signature evidence
+
+The two are not the same thing, and the lock's range is the weaker of them.
+
+- **Asserted.** `release_signer_first_tag = "v1.7.2"` and
+  `release_signer_last_tag = "v1.7.5"` say that the vendored key signed
+  `v1.7.2`, `v1.7.3`, `v1.7.4` and `v1.7.5`. For `v1.7.3` and `v1.7.4` that is
+  a review claim in a committed file, not evidence: nothing in this repository
+  re-checks a signature on those releases, and nothing can — the assets are
+  downloaded at install time, not held here. Extending the range is an
+  assertion of the same kind, which is why it is a reviewed lock change.
+- **Independently verifiable.** The public evidence is the signed assets on the
+  release itself: the asset, its `.sha256`, its `.cosign.bundle` and the
+  published `jankurai-release-2026.pub`, which the installer verifies against
+  the pinned SHA-256 at install time on every run. For `v1.7.2` the checked
+  digest and provenance are recorded above; `published_release` in the lock
+  records that `v1.7.5`'s signed assets are on its release and that its
+  published key is byte-identical to the vendored one.
+- So the range bounds what this repository is *willing* to install; the cosign
+  verification in `jankurai-installer.sh` is what proves a download was signed
+  by the pinned key. The bound narrows that set and never widens it: it cannot
+  make an unsigned or wrongly signed asset install.
 
 The installer line itself cannot be closed here. `jankurai-installer.sh` in this
 repository is the hub's file byte for byte, and the required lane proves it
@@ -159,7 +183,15 @@ own:
 - `scripts/release-tag-bound-test.sh`, in the same lane, proves the script's own
   behaviour: `v1.7.2`-`v1.7.5` and pre-releases inside the range accepted, the
   keyless tags passed through, `v1.7.6`, `v1.8.0` and `v2.0.0` refused, and a
-  lock with no range or an inverted range refused outright.
+  lock with no range, an inverted range or a range ending outside the
+  pre-release policy refused outright. It also carries the negative cases for
+  the parser itself: malformed tags (`v1.7.5abc`, `v1.7.5.99`, `v1.7.5+build.1`,
+  `v1.7.5-rc1`, `v01.7.5`) refused instead of truncated to a covered release,
+  neither of the old packed-number collisions (`v1.7.1001`/`v1.8.1`) treated as
+  one release, and the keyless cut-off still equal to the vendored installer's.
+- `scripts/forge-gate-test.sh` requires `action.yml` to contain both the bound
+  step and the install step, with the bound first, and exercises that check
+  against an action missing either step and against a reversed pair.
 
 Extending the range for a later release is therefore a one-line, reviewable lock
 change here, made once that release is published and signed with this key. When

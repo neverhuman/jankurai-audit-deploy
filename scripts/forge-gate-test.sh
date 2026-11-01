@@ -244,8 +244,44 @@ fi
 check "required lane lints action.yml" has_line '^bash scripts/lint-actions\.sh$' ops/ci/required.sh
 check "required lane proves the closed release-key range" \
   has_line '^bash scripts/release-tag-bound-test\.sh$' ops/ci/required.sh
+# Both steps must exist, and the bound must run first. Requiring both is the
+# point: an awk that only compares line numbers passes an action.yml with no
+# install step at all, and would keep passing if the install step moved to
+# another file where the bound no longer guards it.
+action_bound_before_install() { # action_bound_before_install <action.yml>
+  awk '
+    /^[[:space:]]*run:.*scripts\/release-tag-bound\.sh/ { if (!bound) bound = FNR }
+    /^[[:space:]]*run:.*jankurai-installer\.sh/ { if (!install) install = FNR }
+    END { exit !(bound && install && bound < install) }
+  ' "$1"
+}
 check "the composite action checks the release tag against the range before installing" \
-  bash -c "awk '/release-tag-bound.sh/ { bound = NR } /jankurai-installer.sh/ { exit !(bound && bound < NR) }' action.yml"
+  action_bound_before_install action.yml
+
+# The ordering check itself, against fixtures: it must fail when either step is
+# missing and when they are the wrong way round.
+bound_step='    - name: bound
+      run: bash "$GITHUB_ACTION_PATH/scripts/release-tag-bound.sh"'
+install_step='    - name: install
+      run: bash "$GITHUB_ACTION_PATH/jankurai-installer.sh"'
+fixture_refused() { # fixture_refused <name> <file contents...>
+  local name="$1"; shift
+  local file="$fake_home/action-$RANDOM.yml"
+  printf '%s\n' "$@" > "$file"
+  if action_bound_before_install "$file"; then
+    bad "the action ordering check accepted $name"
+  else
+    ok "the action ordering check refuses $name"
+  fi
+}
+fixture_refused "an action with no installer step" "$bound_step"
+fixture_refused "an action with no release-tag bound step" "$install_step"
+fixture_refused "an action that installs before the bound" "$install_step" "$bound_step"
+if action_bound_before_install <(printf '%s\n%s\n' "$bound_step" "$install_step"); then
+  ok "the action ordering check accepts the bound before the installer"
+else
+  bad "the action ordering check rejected a correctly ordered action"
+fi
 check "no GitHub workflow is committed (GitHub is a publishing mirror)" \
   bash -c "! git ls-files --error-unmatch .github/workflows >/dev/null 2>&1 && [[ ! -d .github/workflows ]]"
 
