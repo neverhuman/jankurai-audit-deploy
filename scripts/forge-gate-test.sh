@@ -145,11 +145,11 @@ refuses "JANKURAI override under pr-ci" "override refused" \
 # rewritten to match. A user-owned anchor cannot authorize it either.
 printf '# swapped binary\n' >> "$fake_home/.jeryu/bin/jankurai"
 write_stamp "$(file_sha256 "$fake_home/.jeryu/bin/jankurai")"
-refuses "swapped binary with rewritten home stamp" "digest anchor must be root-owned" \
+refuses "swapped binary with rewritten home stamp" "does not match protected digest anchor" \
   JANKURAI_AUTHORITY_DIGEST="$PWD/$fake_home/missing-anchor"
 printf '%s\n' "$(file_sha256 "$fake_home/.jeryu/bin/jankurai")" > "$fake_home/anchor"
 chmod 0400 "$fake_home/anchor"
-refuses "gate-user digest anchor with matching rewritten stamp" "digest anchor must be root-owned" \
+refuses "gate-user digest anchor with matching rewritten stamp" "does not match protected digest anchor" \
   JANKURAI_AUTHORITY_DIGEST="$PWD/$fake_home/anchor"
 # Exercise protected host paths without requiring privileged fixture writes.
 # Only metadata is simulated here; the integration refusals above use real files.
@@ -169,8 +169,7 @@ check "protected path refuses symlink" bash -c '
 '
 
 # Real acceptance must exercise the complete resolution chain and host boundary.
-# It is conditional only for unprovisioned developer machines; the hosted gate
-# itself already requires this anchor before it reaches the tripwire.
+# Missing provisioning is a counted failure in the required lane.
 if [[ -f /etc/jankurai/auditor.sha256 && "$(id -u)" != 0 ]]; then
   refuses "governed lane ignores a gate-user anchor matching a swapped binary" \
     "does not match protected digest anchor: /etc/jankurai/auditor.sha256" \
@@ -178,13 +177,12 @@ if [[ -f /etc/jankurai/auditor.sha256 && "$(id -u)" != 0 ]]; then
   check "provisioned host accepts real governed auditor with canonical anchor despite hostile override" \
     bash -c '
       set -euo pipefail
-      out="$(env -u JANKURAI JANKURAI_REQUIRE_GOVERNED=1 \
-        JANKURAI_AUTHORITY_DIGEST=/missing/untrusted-anchor \
+      out="$(env -u JANKURAI JANKURAI_AUTHORITY_DIGEST=/missing/untrusted-anchor \
         bash ops/ci/check.sh --identity-only 2>&1)"
       [[ "$out" == *"auditor identity ok: governed"* ]]
     '
 else
-  printf 'SKIP: real governed acceptance requires non-root user and provisioned /etc/jankurai/auditor.sha256\n'
+  bad 'real governed acceptance requires non-root user and provisioned /etc/jankurai/auditor.sha256'
 fi
 
 # Once host path protection succeeds, exercise digest comparison and copying
@@ -192,19 +190,28 @@ fi
 check "matching protected digest resolves and copies governed binary" bash -c '
   set -euo pipefail
   source ops/ci/auditor.sh
-  protected_digest_path() { return 0; }
+  protected_digest_path() { [[ "$1" == /etc/jankurai/auditor.sha256 ]]; }
+  cat() { if [[ "${2:-}" == /etc/jankurai/auditor.sha256 ]]; then command cat "$HOME/anchor"; else command cat "$@"; fi; }
   unset JANKURAI JANKURAI_REQUIRE_GOVERNED
   HOME="$PWD/$1"
   JANKURAI_AUTHORITY_DIGEST="$HOME/anchor"
-  resolve_auditor
-  [[ "$AUDITOR_IDENTITY" == governed* ]]
-  reverify_auditor
-  rm -r -- "$AUDITOR_DIR"
+  # Accept either staged position and the final single-digest adoption.
+  digest="$(command cat "$HOME/anchor")"
+  chmod 0600 "$HOME/anchor"
+  for adopted in "$digest" "$(printf "%064d\n%s" 0 "$digest")" "$(printf "%s\n%064d" "$digest" 0)"; do
+    printf "%s\n" "$adopted" > "$HOME/anchor"
+    unset JANKURAI
+    resolve_auditor
+    [[ "$AUDITOR_IDENTITY" == governed* ]]
+    reverify_auditor
+    rm -r -- "$AUDITOR_DIR"
+  done
 ' bash "$fake_home"
 check "rewritten stamp cannot override a different protected digest" bash -c '
   set -euo pipefail
   source ops/ci/auditor.sh
-  protected_digest_path() { return 0; }
+  protected_digest_path() { [[ "$1" == /etc/jankurai/auditor.sha256 ]]; }
+  cat() { if [[ "${2:-}" == /etc/jankurai/auditor.sha256 ]]; then command cat "$HOME/anchor"; else command cat "$@"; fi; }
   unset JANKURAI JANKURAI_REQUIRE_GOVERNED
   HOME="$PWD/$1"
   JANKURAI_AUTHORITY_DIGEST="$HOME/anchor"

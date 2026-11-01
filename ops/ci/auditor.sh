@@ -73,15 +73,21 @@ protected_digest_path() {
   done
 }
 
+# At most two adopted digests during an explicit host-owner transition.
+valid_anchor_digests() {
+  local digests="$1" first second
+  if [[ "$digests" =~ ^[0-9a-f]{64}$ ]]; then return 0; fi
+  first="${digests%%$'\n'*}"
+  second="${digests#*$'\n'}"
+  [[ "$first" =~ ^[0-9a-f]{64}$ && "$second" =~ ^[0-9a-f]{64}$ && "$first" != "$second" ]]
+}
+
 resolve_auditor() {
   local governed_bin="$HOME/.jeryu/bin/jankurai"
   local authority_stamp="$HOME/.jeryu/authority/jankurai.json"
   local source_bin verified_sha actual_sha auditor_dir anchor_sha
-  local digest_path="${JANKURAI_AUTHORITY_DIGEST:-/etc/jankurai/auditor.sha256}"
+  local digest_path=/etc/jankurai/auditor.sha256
   auditor_platform_check
-  if [[ "${JANKURAI_REQUIRE_GOVERNED:-0}" == 1 ]]; then
-    digest_path=/etc/jankurai/auditor.sha256
-  fi
   if [[ -n "${JANKURAI:-}" ]]; then
     [[ "${JANKURAI_REQUIRE_GOVERNED:-0}" != "1" ]] ||
       auditor_die "JANKURAI override refused: this lane scores only with the governed install ($governed_bin)"
@@ -105,8 +111,8 @@ resolve_auditor() {
     protected_digest_path "$digest_path" ||
       auditor_die "digest anchor must be root-owned and unwritable by the gate user, including all ancestors: $digest_path"
     anchor_sha="$(cat -- "$digest_path")"
-    [[ "$anchor_sha" =~ ^[0-9a-f]{64}$ ]] || auditor_die "digest anchor must contain one SHA-256: $digest_path"
-    [[ "$actual_sha" == "$anchor_sha" ]] ||
+    valid_anchor_digests "$anchor_sha" || auditor_die "digest anchor must contain one or two distinct SHA-256 lines: $digest_path"
+    grep -qxF -- "$actual_sha" <<<"$anchor_sha" ||
       auditor_die "governed jankurai does not match protected digest anchor: $digest_path"
     source_bin="$governed_bin"
     AUDITOR_IDENTITY="governed (sha256 matches protected anchor $digest_path; metadata $authority_stamp)"

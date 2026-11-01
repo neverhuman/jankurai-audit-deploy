@@ -75,9 +75,10 @@ the hub (network unless the sibling is present); a few seconds.
 
 The governed binary and its home authority stamp must agree, and their digest
 must also match `/etc/jankurai/auditor.sha256`. Governed lanes ignore
-`JANKURAI_AUTHORITY_DIGEST` and always use that canonical path. Only explicitly
-unverified local lanes may select another protected path. The anchor contains
-one lowercase SHA-256 digest, optionally followed by a newline. The file and
+`JANKURAI_AUTHORITY_DIGEST` and always use that canonical path. This includes local check, fast, and audit without
+`JANKURAI_REQUIRE_GOVERNED=1`. The anchor contains one lowercase SHA-256
+digest, or two distinct digest lines during rotation, optionally followed by a
+newline. The file and
 every ancestor must be root-owned, have no group/world write bits, be unwritable
 by the gate user (including ACL access), and contain no symlinks. Root gates and
 missing or malformed anchors fail closed. The home stamp cannot authorize a
@@ -100,8 +101,33 @@ env -u JANKURAI JANKURAI_REQUIRE_GOVERNED=1 bash ops/ci/check.sh --identity-only
 Provision and verify every gate host **before** publishing an enforcing head.
 The installer requires root, accepts only an explicit digest, refuses symlink
 paths and unsafe ownership/modes, and never reads the user-writable home stamp.
-It is idempotent for the adopted digest and refuses changing an existing anchor;
-an auditor rotation requires a separate host-owner adoption.
+It is idempotent for the adopted digest and refuses implicit replacement.
+Provisioning supports GNU and BSD `stat` with an explicit platform diagnostic.
+
+For rotation, independently verify both signed artifacts. Deploy readers with
+two-digest support to every lane before staging: older readers reject the new
+format. As root, run `bash ops/ci/install-auditor-anchor.sh --stage "$OLD_DIGEST"
+"$NEW_DIGEST"` (one command). This atomically adopts both digests. Only then
+allow automatic governed home updates. Run the identity-only check above as
+each non-root gate user after updating its binary and stamp. Once every home
+has migrated and rollback is no longer needed, as root run
+`bash ops/ci/install-auditor-anchor.sh --retire "$OLD_DIGEST" "$NEW_DIGEST"`.
+This atomically retains only the new digest. Both commands are safe to rerun
+and refuse unexpected existing adoption. Never grant gate users anchor writes.
+
+Stage on all hosts before updating any homes; retire only after all homes have
+migrated. This avoids an anchor mismatch gap. A gate racing a non-atomic home
+binary/stamp update still fails closed and may need a retry. Rollback while
+staged needs no anchor change; after retirement, stage the new digest followed
+by the old digest before rolling homes back.
+
+Owner operations serialize with `/etc/jankurai/.auditor.lock`. A crash leaves a
+complete old or new anchor and may leave the lock. Before removing that empty
+directory with `rmdir`, the owner must confirm no owner process remains and
+inspect the anchor and any `.auditor.*` pending files, then rerun the intended
+command. Never remove a live lock. The required lane counts missing provisioning
+or root-run acceptance as failure. Rotation fixtures simulate owner metadata;
+the real acceptance tripwire uses the canonical host file.
 
 Governed gates require a non-root Unix user. The optional local-CI Docker image
 defaults to root and is therefore unsuitable for a governed gate as shipped.

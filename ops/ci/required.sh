@@ -10,6 +10,7 @@ echo "[ci] required lane: ci-local lane contract"
 bash scripts/ci-local-lanes-test.sh
 
 echo "[ci] required lane: forge gate contract"
+bash scripts/auditor-anchor-test.sh
 bash scripts/forge-gate-test.sh
 
 shell_files=(scripts/*.sh ops/ci/*.sh jankurai-installer.sh)
